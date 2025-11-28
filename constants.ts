@@ -1,3 +1,4 @@
+
 import { Package, Driver, RideRequest } from './types';
 
 export const POPULAR_PACKAGES: Package[] = [
@@ -157,6 +158,101 @@ export const POPULAR_PACKAGES: Package[] = [
     ],
     rating: 4.9,
     reviewsCount: 220
+  },
+  {
+    id: 'p5',
+    name: 'Varanasi Spiritual Awakening',
+    slug: 'varanasi-spiritual',
+    destination: 'Varanasi, India',
+    duration: '3 Days / 2 Nights',
+    price: 250,
+    groupSize: 'Family / Senior Citizens',
+    bestTime: 'Oct - Mar',
+    idealFor: ['Culture', 'Spirituality', 'History'],
+    shortDesc: 'Experience the oldest living city, Ganga Aarti, and divine spirituality.',
+    longDesc: 'Immerse yourself in the spiritual energy of Kashi. Witness the mesmerizing Ganga Aarti at Dashashwamedh Ghat, visit the sacred Kashi Vishwanath Temple, and take a sunrise boat ride on the Ganges.',
+    images: [
+      'https://images.unsplash.com/photo-1561361513-2d000a50f0dc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1624694401729-1667d8d052d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+    ],
+    category: 'Pilgrimage',
+    inclusions: ['Hotel Stay', 'Private Boat Ride', 'Temple VIP Darshan Assistance', 'Airport Transfers'],
+    exclusions: ['Lunch & Dinner', 'Ritual Fees'],
+    itinerary: [
+      { day: 1, title: 'Arrival & Evening Aarti', activities: ['Airport Pickup', 'Dashashwamedh Ghat Aarti'], meals: ['Dinner'] },
+      { day: 2, title: 'Kashi Darshan', activities: ['Sunrise Boat Ride', 'Kashi Vishwanath Temple', 'Sarnath Excursion'], meals: ['Breakfast'] },
+      { day: 3, title: 'Departure', activities: ['Shopping in Godowlia', 'Airport Drop'], meals: ['Breakfast'] }
+    ],
+    rating: 4.7,
+    reviewsCount: 156,
+    hiddenGems: [
+      { title: 'Manikarnika Ghat', description: 'Witness the eternal flame and the cycle of life and death.', image: 'https://images.unsplash.com/photo-1622303534888-2947a1677334?q=80&w=300&auto=format&fit=crop' }
+    ]
+  },
+  {
+    id: 'p6',
+    name: 'Char Dham Yatra',
+    slug: 'char-dham-yatra',
+    destination: 'Uttarakhand, India',
+    duration: '10 Days / 9 Nights',
+    price: 900,
+    groupSize: 'Group / Family',
+    bestTime: 'May - Jun, Sep - Oct',
+    idealFor: ['Pilgrimage', 'Nature', 'Adventure'],
+    shortDesc: 'The ultimate pilgrimage to Yamunotri, Gangotri, Kedarnath, and Badrinath.',
+    longDesc: 'A divine journey through the Himalayas to the four most sacred shrines of Hinduism. Experience the spiritual bliss and breathtaking mountain views.',
+    images: [
+      'https://images.unsplash.com/photo-1626084478179-8b438258384b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1598322695507-6b69c47c7293?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+    ],
+    category: 'Pilgrimage',
+    inclusions: ['Helicopter tickets (Optional)', 'Hotels & Camps', 'All Meals', 'Transport'],
+    exclusions: ['Pony/Palki Charges', 'Personal Medication'],
+    itinerary: [
+      { day: 1, title: 'Haridwar to Barkot', activities: ['Drive to Barkot', 'Yamuna River View'], meals: ['Dinner'] },
+      { day: 2, title: 'Yamunotri Trek', activities: ['Trek to Yamunotri', 'Darshan', 'Return to Barkot'], meals: ['Breakfast', 'Dinner'] },
+      { day: 3, title: 'Barkot to Uttarkashi', activities: ['Vishwanath Temple Visit'], meals: ['Breakfast', 'Dinner'] },
+      { day: 4, title: 'Gangotri Darshan', activities: ['Drive to Gangotri', 'Darshan', 'Return to Uttarkashi'], meals: ['Breakfast', 'Dinner'] },
+      { day: 5, title: 'Uttarkashi to Guptkashi', activities: ['Scenic Drive'], meals: ['Breakfast', 'Dinner'] },
+      { day: 6, title: 'Kedarnath Trek', activities: ['Trek/Helicopter', 'Evening Aarti'], meals: ['Breakfast', 'Dinner'] },
+      { day: 7, title: 'Return to Guptkashi', activities: ['Morning Darshan', 'Trek Down'], meals: ['Breakfast', 'Dinner'] },
+      { day: 8, title: 'Guptkashi to Badrinath', activities: ['Drive to Badrinath', 'Evening Darshan'], meals: ['Breakfast', 'Dinner'] },
+      { day: 9, title: 'Badrinath to Rudraprayag', activities: ['Mana Village', 'Drive Back'], meals: ['Breakfast', 'Dinner'] },
+      { day: 10, title: 'Return to Haridwar', activities: ['Drop at Haridwar Station'], meals: ['Breakfast'] }
+    ],
+    rating: 4.9,
+    reviewsCount: 412
+  },
+  {
+    id: 'p7',
+    name: 'Amritsar Golden Temple & Wagah Border',
+    slug: 'amritsar-golden-temple',
+    destination: 'Amritsar, Punjab',
+    duration: '3 Days / 2 Nights',
+    price: 200,
+    groupSize: 'Family / Group',
+    bestTime: 'Oct - Mar',
+    idealFor: ['Pilgrimage', 'Culture', 'History'],
+    shortDesc: 'Visit the holiest shrine of Sikhism and witness the patriotic Wagah Border ceremony.',
+    longDesc: 'Soak in the divine atmosphere of Sri Harmandir Sahib (Golden Temple). Enjoy the Langar, visit Jallianwala Bagh, and cheer for the nation at the Wagah Border beating retreat ceremony.',
+    images: [
+      'https://images.unsplash.com/photo-1514222134-b57cbb8ce073?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+      'https://images.unsplash.com/photo-1580202313707-1c4b14d4d146?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+    ],
+    category: 'Pilgrimage',
+    inclusions: ['Hotel Stay', 'Private Car for Sightseeing', 'Wagah Border VIP Pass assistance'],
+    exclusions: ['Airfare', 'Lunch & Dinner'],
+    itinerary: [
+      { day: 1, title: 'Arrival & Wagah Border', activities: ['Airport Pickup', 'Wagah Border Ceremony'], meals: ['Dinner'] },
+      { day: 2, title: 'Golden Temple & City Tour', activities: ['Golden Temple', 'Jallianwala Bagh', 'Partition Museum'], meals: ['Breakfast'] },
+      { day: 3, title: 'Departure', activities: ['Shopping at Hall Bazaar', 'Airport Drop'], meals: ['Breakfast'] }
+    ],
+    rating: 4.8,
+    reviewsCount: 305,
+    foodGuide: [
+        { name: 'Amritsari Kulcha', type: 'Veg', cost: 2, mustTry: true },
+        { name: 'Lassi', type: 'Veg', cost: 1, mustTry: true }
+    ]
   }
 ];
 

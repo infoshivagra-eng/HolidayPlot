@@ -1,8 +1,10 @@
+
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapPin, Clock, Users, CheckCircle2, XCircle, Map as MapIcon, Star, Camera, Utensils, AlertTriangle, FileText, Plane, Briefcase, Info, ChevronRight, Share2, ShieldCheck } from 'lucide-react';
+import { MapPin, Clock, Users, CheckCircle2, XCircle, Map as MapIcon, Star, Camera, Utensils, AlertTriangle, FileText, Briefcase, ChevronRight, Share2, ShieldCheck, Facebook, Twitter, Link as LinkIcon, MessageCircle } from 'lucide-react';
 import { useCurrency } from '../CurrencyContext';
 import { useGlobal } from '../GlobalContext';
+import { formatDate } from '../utils';
 
 const PackageDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,13 +13,56 @@ const PackageDetail: React.FC = () => {
   const { packages } = useGlobal(); // Use global packages
   const pkg = packages.find((p) => p.id === id);
   const [activeTab, setActiveTab] = useState('itinerary');
+  
+  // New state for dynamic pricing and travel date
+  const [travelers, setTravelers] = useState(2);
+  const [travelDate, setTravelDate] = useState('');
+
+  // Sharing State
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   if (!pkg) {
     return <div className="p-10 text-center text-gray-500">Package not found</div>;
   }
 
   const handleBookNow = () => {
-    navigate('/booking', { state: { type: 'Package', item: pkg } });
+    navigate('/booking', { 
+        state: { 
+            type: 'Package', 
+            item: pkg, 
+            travelers: travelers,
+            travelDate: travelDate 
+        } 
+    });
+  };
+
+  const shareUrl = window.location.href;
+  const shareText = `Check out this amazing trip to ${pkg.destination}: ${pkg.name} on HolidayPot!`;
+
+  const handleShare = async () => {
+    // Try Native Share first (Mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: pkg.name,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    }
+    // Fallback to dropdown
+    setIsShareOpen(!isShareOpen);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(shareUrl);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+    setIsShareOpen(false);
   };
 
   const tabs = [
@@ -27,7 +72,7 @@ const PackageDetail: React.FC = () => {
   ];
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-20 font-sans">
+    <div className="bg-gray-50 min-h-screen pb-20 font-sans" onClick={() => isShareOpen && setIsShareOpen(false)}>
       {/* Immersive Header */}
       <div className="relative h-[65vh] min-h-[500px]">
         <img 
@@ -42,9 +87,63 @@ const PackageDetail: React.FC = () => {
            <Link to="/packages" className="bg-white/20 backdrop-blur-md text-white p-3 rounded-full hover:bg-white/30 transition-colors">
               <ChevronRight size={20} className="rotate-180"/>
            </Link>
-           <button className="bg-white/20 backdrop-blur-md text-white p-3 rounded-full hover:bg-white/30 transition-colors">
-              <Share2 size={20}/>
-           </button>
+           
+           <div className="relative">
+             <button 
+                onClick={(e) => { e.stopPropagation(); handleShare(); }}
+                className="bg-white/20 backdrop-blur-md text-white p-3 rounded-full hover:bg-white/30 transition-colors"
+             >
+                <Share2 size={20}/>
+             </button>
+
+             {/* Social Share Dropdown */}
+             {isShareOpen && (
+                <div className="absolute right-0 top-14 w-56 bg-white rounded-xl shadow-2xl p-2 z-50 animate-fade-in border border-gray-100">
+                    <div className="text-xs font-bold text-gray-400 px-3 py-2 uppercase">Share via</div>
+                    
+                    <a 
+                      href={`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-3 py-2.5 hover:bg-green-50 text-gray-700 rounded-lg transition-colors"
+                    >
+                        <MessageCircle size={18} className="text-green-500"/> WhatsApp
+                    </a>
+                    
+                    <a 
+                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-3 py-2.5 hover:bg-blue-50 text-gray-700 rounded-lg transition-colors"
+                    >
+                        <Facebook size={18} className="text-blue-600"/> Facebook
+                    </a>
+                    
+                    <a 
+                      href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-3 py-2.5 hover:bg-sky-50 text-gray-700 rounded-lg transition-colors"
+                    >
+                        <Twitter size={18} className="text-sky-400"/> Twitter / X
+                    </a>
+                    
+                    <button 
+                      onClick={copyToClipboard}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors text-left"
+                    >
+                        <LinkIcon size={18} className="text-gray-500"/> Copy Link
+                    </button>
+                </div>
+             )}
+             
+             {/* Copy Success Toast */}
+             {copySuccess && (
+                <div className="absolute right-0 top-14 bg-black/80 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap animate-fade-in">
+                    Link Copied!
+                </div>
+             )}
+           </div>
         </div>
 
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-12 text-white">
@@ -283,7 +382,7 @@ const PackageDetail: React.FC = () => {
                 <div className="flex justify-between items-end mb-6 pb-6 border-b border-gray-100">
                    <div>
                       <span className="text-sm text-gray-400">Total Price</span>
-                      <div className="text-3xl font-bold text-gray-900">{formatPrice(pkg.price)}</div>
+                      <div className="text-3xl font-bold text-gray-900">{formatPrice(pkg.price * travelers)}</div>
                       <span className="text-xs text-green-600 font-medium">Includes taxes & fees</span>
                    </div>
                    <div className="text-right">
@@ -297,14 +396,27 @@ const PackageDetail: React.FC = () => {
                 <div className="space-y-4 mb-6">
                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 hover:border-brand-blue transition-colors group">
                       <label className="block text-xs font-bold text-gray-500 mb-1 uppercase group-hover:text-brand-blue">Travel Date</label>
-                      <input type="date" className="w-full bg-transparent outline-none text-sm font-semibold text-gray-900"/>
+                      <input 
+                        type="date" 
+                        value={travelDate}
+                        onChange={(e) => setTravelDate(e.target.value)}
+                        className="w-full bg-transparent outline-none text-sm font-semibold text-gray-900"
+                      />
                    </div>
                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 hover:border-brand-blue transition-colors group">
                       <label className="block text-xs font-bold text-gray-500 mb-1 uppercase group-hover:text-brand-blue">Travelers</label>
-                      <select className="w-full bg-transparent outline-none text-sm font-semibold text-gray-900">
-                        <option>2 Adults</option>
-                        <option>1 Adult</option>
-                        <option>Family (2A + 2C)</option>
+                      <select 
+                        value={travelers}
+                        onChange={(e) => setTravelers(Number(e.target.value))}
+                        className="w-full bg-transparent outline-none text-sm font-semibold text-gray-900"
+                      >
+                        <option value={1}>1 Adult</option>
+                        <option value={2}>2 Adults</option>
+                        <option value={3}>3 Adults</option>
+                        <option value={4}>4 Adults</option>
+                        <option value={5}>5 Adults</option>
+                        <option value={6}>6 Adults</option>
+                        <option value={10}>Group (10+)</option>
                       </select>
                    </div>
                 </div>

@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, Package as PkgIcon, DollarSign, Calendar, Plus, Lock, LogOut, MapPin, Search, Trash2, CheckCircle, Sparkles, Loader2, Image as ImageIcon, Edit, Save, FileJson, Layout } from 'lucide-react';
+import { Users, Package as PkgIcon, DollarSign, Calendar, Plus, Lock, LogOut, MapPin, Search, Trash2, CheckCircle, Sparkles, Loader2, Image as ImageIcon, Edit, Save, FileJson, Layout, Building2, Globe, Settings, Activity, Compass, Utensils, Briefcase } from 'lucide-react';
 import { useCurrency } from '../CurrencyContext';
 import { useGlobal } from '../GlobalContext';
 import { formatDate } from '../utils';
@@ -19,7 +20,11 @@ const data = [
 
 const AdminDashboard: React.FC = () => {
   const { formatPrice, currency } = useCurrency();
-  const { packages, addPackage, updatePackage, bookings, drivers, deleteDriver, updateDriverStatus, updateBookingStatus } = useGlobal();
+  const { 
+    packages, addPackage, updatePackage, bookings, drivers, 
+    deleteDriver, updateDriverStatus, updateBookingStatus,
+    companyProfile, updateCompanyProfile, seoSettings, updateSeoSettings
+  } = useGlobal();
   
   // Auth State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -28,30 +33,51 @@ const AdminDashboard: React.FC = () => {
   const [loginError, setLoginError] = useState('');
 
   // UI State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'packages' | 'enquiries' | 'drivers'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'packages' | 'enquiries' | 'drivers' | 'profile' | 'seo'>('dashboard');
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [modalTab, setModalTab] = useState<'basic' | 'advanced'>('basic');
+  const [modalTab, setModalTab] = useState<'basic' | 'itinerary' | 'guide' | 'smart'>('basic');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [originalPackage, setOriginalPackage] = useState<Package | null>(null);
 
-  // Form State
+  // Form State - Basic Info
   const [newPackage, setNewPackage] = useState({
     name: '',
     destination: '',
     price: '',
     duration: '',
     category: 'Culture',
+    groupSize: 'Couples / Family',
     image: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
   });
 
-  const [jsonInput, setJsonInput] = useState('');
+  // Form State - Complex Sections (JSON Strings)
+  const [itineraryJson, setItineraryJson] = useState('{}');
+  const [guideJson, setGuideJson] = useState('{}');
+  const [smartJson, setSmartJson] = useState('{}');
+
+  // Profile & SEO Form States
+  const [profileForm, setProfileForm] = useState(companyProfile);
+  const [seoForm, setSeoForm] = useState(seoSettings);
+
+  // Persistent Login Check
+  useEffect(() => {
+    const storedAuth = localStorage.getItem('holidayPotAdminAuth');
+    if (storedAuth === 'true') {
+      setIsAuthenticated(true);
+    }
+    // Initialize forms with context data
+    setProfileForm(companyProfile);
+    setSeoForm(seoSettings);
+  }, [companyProfile, seoSettings]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (username === 'admin' && password === 'admin') {
       setIsAuthenticated(true);
+      localStorage.setItem('holidayPotAdminAuth', 'true');
       setLoginError('');
     } else {
       setLoginError('Invalid credentials. Try admin / admin');
@@ -60,8 +86,21 @@ const AdminDashboard: React.FC = () => {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    localStorage.removeItem('holidayPotAdminAuth');
     setUsername('');
     setPassword('');
+  };
+
+  const handleProfileSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateCompanyProfile(profileForm);
+    alert('Company Profile Updated!');
+  };
+
+  const handleSeoSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSeoSettings(seoForm);
+    alert('SEO Settings Updated!');
   };
 
   const resetForm = () => {
@@ -71,46 +110,77 @@ const AdminDashboard: React.FC = () => {
         price: '', 
         duration: '', 
         category: 'Culture', 
+        groupSize: 'Couples / Family',
         image: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80' 
     });
-    setJsonInput('');
+    setItineraryJson('{}');
+    setGuideJson('{}');
+    setSmartJson('{}');
     setEditingId(null);
+    setOriginalPackage(null);
     setModalTab('basic');
   };
 
   const openNewPackageModal = () => {
      resetForm();
+     // Initialize defaults for JSONs
+     setItineraryJson(JSON.stringify({
+        shortDesc: "Short description...",
+        longDesc: "Detailed description...",
+        bestTime: "Oct - Mar",
+        idealFor: ["Family"],
+        inclusions: ["Hotel"],
+        exclusions: ["Flights"],
+        itinerary: []
+     }, null, 2));
+     setGuideJson(JSON.stringify({
+        hiddenGems: [],
+        foodGuide: []
+     }, null, 2));
+     setSmartJson(JSON.stringify({
+        packingList: [],
+        safetyTips: [],
+        visaInfo: { requirements: "", processingTime: "", documents: [] },
+        airportInfo: { bestLounge: "", price: 0, tips: "" }
+     }, null, 2));
      setIsModalOpen(true);
   };
 
   const handleEditClick = (pkg: Package) => {
+    setOriginalPackage(pkg);
     setNewPackage({
         name: pkg.name,
         destination: pkg.destination,
         price: pkg.price.toString(),
         duration: pkg.duration,
         category: pkg.category,
+        groupSize: pkg.groupSize || 'Couples / Family',
         image: pkg.images[0] || ''
     });
 
-    // Extract complex data for JSON editor
-    const complexData = {
+    // Distribute data into tabs
+    setItineraryJson(JSON.stringify({
         shortDesc: pkg.shortDesc,
         longDesc: pkg.longDesc,
-        idealFor: pkg.idealFor,
         bestTime: pkg.bestTime,
+        idealFor: pkg.idealFor,
         inclusions: pkg.inclusions,
         exclusions: pkg.exclusions,
-        itinerary: pkg.itinerary,
-        hiddenGems: pkg.hiddenGems,
-        packingList: pkg.packingList,
-        foodGuide: pkg.foodGuide,
-        safetyTips: pkg.safetyTips,
+        itinerary: pkg.itinerary
+    }, null, 2));
+
+    setGuideJson(JSON.stringify({
+        hiddenGems: pkg.hiddenGems || [],
+        foodGuide: pkg.foodGuide || []
+    }, null, 2));
+
+    setSmartJson(JSON.stringify({
+        packingList: pkg.packingList || [],
+        safetyTips: pkg.safetyTips || [],
         visaInfo: pkg.visaInfo,
         airportInfo: pkg.airportInfo
-    };
+    }, null, 2));
 
-    setJsonInput(JSON.stringify(complexData, null, 2));
     setEditingId(pkg.id);
     setIsModalOpen(true);
   };
@@ -130,39 +200,39 @@ const AdminDashboard: React.FC = () => {
         Title: "${newPackage.name}"
         Duration: "${newPackage.duration}"
         
-        The JSON MUST strictly follow this structure and include specific, real details for the destination:
+        The JSON MUST strictly follow this structure:
         {
-          "shortDesc": "Catchy 1 sentence description",
-          "longDesc": " Engaging 2-3 paragraph description",
-          "idealFor": ["Type1", "Type2"],
-          "bestTime": "e.g. Oct-Mar",
-          "inclusions": ["List of 4-5 items"],
-          "exclusions": ["List of 3 items"],
-          "itinerary": [
-            { "day": 1, "title": "Day Title", "activities": ["Activity 1", "Activity 2"], "meals": ["Dinner"] }
-            // ... generate for all days
-          ],
-          "hiddenGems": [
-            { "title": "Name of secret spot", "description": "Why it is special", "image": "https://source.unsplash.com/800x600/?${newPackage.destination},landmark" }
-            // 2 items
-          ],
-          "packingList": [
-            { "category": "Clothing", "items": ["Item 1", "Item 2"] },
-            { "category": "Essentials", "items": ["Item 1", "Item 2"] }
-          ],
-          "foodGuide": [
-            { "name": "Local Dish Name", "type": "Veg/Non-Veg", "cost": 5, "mustTry": true }
-            // 2-3 items. Cost in USD.
-          ],
-          "safetyTips": [
-            { "title": "Scam/Tip Title", "description": "Description" }
-            // 2 items
-          ],
-          "visaInfo": { "requirements": "Brief requirement", "processingTime": "e.g. 3 days", "documents": ["Doc 1", "Doc 2"] },
-          "airportInfo": { "bestLounge": "Lounge Name", "price": 25, "tips": "Tip for entry" }
+          "overview": {
+             "shortDesc": "Catchy 1 sentence description",
+             "longDesc": "Engaging 2-3 paragraph description",
+             "idealFor": ["Type1", "Type2"],
+             "bestTime": "e.g. Oct-Mar",
+             "inclusions": ["List of 4-5 items"],
+             "exclusions": ["List of 3 items"],
+             "itinerary": [
+                { "day": 1, "title": "Day Title", "activities": ["Activity 1", "Activity 2"], "meals": ["Dinner"] }
+             ]
+          },
+          "guide": {
+             "hiddenGems": [
+                { "title": "Name", "description": "Why it is special", "image": "https://source.unsplash.com/800x600/?${newPackage.destination},landmark" }
+             ],
+             "foodGuide": [
+                { "name": "Dish Name", "type": "Veg/Non-Veg", "cost": 5, "mustTry": true }
+             ]
+          },
+          "smart": {
+             "packingList": [
+                { "category": "Clothing", "items": ["Item 1"] }
+             ],
+             "safetyTips": [
+                { "title": "Tip Title", "description": "Desc" }
+             ],
+             "visaInfo": { "requirements": "Req", "processingTime": "Time", "documents": ["Doc"] },
+             "airportInfo": { "bestLounge": "Name", "price": 25, "tips": "Tips" }
+          }
         }
-
-        Return ONLY raw JSON. No markdown formatting.
+        Return ONLY raw JSON.
       `;
 
       const response = await ai.models.generateContent({
@@ -171,13 +241,15 @@ const AdminDashboard: React.FC = () => {
       });
 
       let jsonStr = response.text;
-      // Cleanup json string if it has markdown code blocks
       jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
       
-      // Validate JSON
-      JSON.parse(jsonStr); 
-      setJsonInput(jsonStr);
-      setModalTab('advanced'); // Switch to advanced tab to show result
+      const generated = JSON.parse(jsonStr); 
+      
+      setItineraryJson(JSON.stringify(generated.overview, null, 2));
+      setGuideJson(JSON.stringify(generated.guide, null, 2));
+      setSmartJson(JSON.stringify(generated.smart, null, 2));
+      
+      setModalTab('itinerary');
     } catch (error) {
       console.error("AI Generation failed", error);
       alert("AI Generation failed. Please try again or fill manually.");
@@ -189,32 +261,13 @@ const AdminDashboard: React.FC = () => {
   const handleSavePackage = (e: React.FormEvent) => {
     e.preventDefault();
     
-    let complexData = {};
-    
-    // Parse JSON Input
+    let parsedOverview, parsedGuide, parsedSmart;
     try {
-        if (jsonInput) {
-            complexData = JSON.parse(jsonInput);
-        } else {
-             // Fallback default structure
-            complexData = {
-                shortDesc: 'Experience ' + newPackage.destination,
-                longDesc: `Journey to ${newPackage.destination}.`,
-                idealFor: ['Family'],
-                bestTime: 'Anytime',
-                inclusions: [],
-                exclusions: [],
-                itinerary: [],
-                hiddenGems: [],
-                packingList: [],
-                foodGuide: [],
-                safetyTips: [],
-                visaInfo: { requirements: '', processingTime: '', documents: [] },
-                airportInfo: { bestLounge: '', price: 0, tips: '' }
-            };
-        }
+        parsedOverview = JSON.parse(itineraryJson);
+        parsedGuide = JSON.parse(guideJson);
+        parsedSmart = JSON.parse(smartJson);
     } catch (err) {
-        alert("Invalid JSON in Advanced Details. Please fix syntax errors.");
+        alert("Invalid JSON in one of the tabs. Please check syntax.");
         return;
     }
 
@@ -225,12 +278,16 @@ const AdminDashboard: React.FC = () => {
       price: Number(newPackage.price),
       duration: newPackage.duration,
       category: newPackage.category as any,
-      groupSize: 'Variable',
-      rating: editingId ? packages.find(p => p.id === editingId)?.rating || 0 : 0,
-      reviewsCount: editingId ? packages.find(p => p.id === editingId)?.reviewsCount || 0 : 0,
+      groupSize: newPackage.groupSize,
+      rating: originalPackage ? originalPackage.rating : 5.0,
+      reviewsCount: originalPackage ? originalPackage.reviewsCount : 0,
       slug: newPackage.name.toLowerCase().replace(/\s+/g, '-'),
-      images: [newPackage.image],
-      ...complexData as any
+      images: [newPackage.image], // Simplification: Overwrite with cover image
+      
+      // Merge parsed data
+      ...parsedOverview,
+      ...parsedGuide,
+      ...parsedSmart
     };
     
     if (editingId) {
@@ -304,7 +361,9 @@ const AdminDashboard: React.FC = () => {
                  { id: 'dashboard', label: 'Overview' },
                  { id: 'packages', label: 'Packages' },
                  { id: 'enquiries', label: 'Bookings' },
-                 { id: 'drivers', label: 'Drivers' }
+                 { id: 'drivers', label: 'Drivers' },
+                 { id: 'profile', label: 'Company' },
+                 { id: 'seo', label: 'SEO' }
                ].map(tab => (
                  <button 
                     key={tab.id}
@@ -325,9 +384,9 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'dashboard' && (
             <div className="animate-fade-in">
-              {/* KPIs */}
+              {/* KPIs - Clickable */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div onClick={() => setActiveTab('enquiries')} className="cursor-pointer bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-4">
                       <div className="p-3 bg-blue-100 text-brand-blue rounded-lg"><DollarSign size={20}/></div>
                       <span className="text-green-500 text-xs font-bold">+12%</span>
@@ -335,7 +394,7 @@ const AdminDashboard: React.FC = () => {
                     <div className="text-2xl font-bold text-gray-900">{formatPrice(bookings.reduce((sum, b) => sum + (b.paid ? b.totalAmount : 0), 0))}</div>
                     <div className="text-xs text-gray-500">Total Revenue</div>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div onClick={() => setActiveTab('enquiries')} className="cursor-pointer bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-4">
                       <div className="p-3 bg-purple-100 text-purple-600 rounded-lg"><Calendar size={20}/></div>
                       <span className="text-gray-400 text-xs">Total</span>
@@ -343,14 +402,14 @@ const AdminDashboard: React.FC = () => {
                     <div className="text-2xl font-bold text-gray-900">{bookings.length}</div>
                     <div className="text-xs text-gray-500">Bookings & Enquiries</div>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div onClick={() => setActiveTab('drivers')} className="cursor-pointer bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-4">
                       <div className="p-3 bg-orange-100 text-brand-orange rounded-lg"><Users size={20}/></div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900">{drivers.length}</div>
                     <div className="text-xs text-gray-500">Registered Drivers</div>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div onClick={() => setActiveTab('packages')} className="cursor-pointer bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-4">
                       <div className="p-3 bg-green-100 text-brand-green rounded-lg"><PkgIcon size={20}/></div>
                     </div>
@@ -481,6 +540,7 @@ const AdminDashboard: React.FC = () => {
                             <th className="p-4">Date</th>
                             <th className="p-4">Customer</th>
                             <th className="p-4">Item Details</th>
+                            <th className="p-4">Travel Date</th>
                             <th className="p-4">Total</th>
                             <th className="p-4">Status</th>
                             <th className="p-4">Action</th>
@@ -500,7 +560,10 @@ const AdminDashboard: React.FC = () => {
                                   <div className="text-sm font-medium text-gray-900 max-w-[200px] truncate" title={booking.itemName}>{booking.itemName}</div>
                                   <div className="text-xs text-gray-500 uppercase">{booking.type} • {booking.travelers} Pax</div>
                                </td>
-                               <td className="p-4 font-bold text-brand-blue text-sm">{formatPrice(booking.totalAmount)}</td>
+                               <td className="p-4 text-sm font-bold text-brand-blue">
+                                  {booking.travelDate ? formatDate(booking.travelDate) : '-'}
+                               </td>
+                               <td className="p-4 font-bold text-gray-900 text-sm">{formatPrice(booking.totalAmount)}</td>
                                <td className="p-4">
                                   <span className={`px-2 py-1 rounded text-xs font-bold ${booking.status === 'Confirmed' ? 'bg-green-100 text-green-700' : booking.status === 'Pending' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
                                      {booking.status}
@@ -537,7 +600,7 @@ const AdminDashboard: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                    {drivers.map(driver => (
-                      <div key={driver.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative group">
+                      <div key={driver.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative group hover:shadow-lg transition-all">
                          <div className="h-24 bg-brand-dark relative">
                             <div className="absolute top-2 right-2">
                                <span className={`px-2 py-1 rounded text-xs font-bold ${driver.status === 'Available' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
@@ -576,10 +639,197 @@ const AdminDashboard: React.FC = () => {
              </div>
           )}
 
+          {activeTab === 'profile' && (
+            <div className="animate-fade-in">
+               <h2 className="text-xl font-bold text-gray-900 mb-6">Company Profile</h2>
+               <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-2xl">
+                 <form onSubmit={handleProfileSave} className="space-y-4">
+                   <div>
+                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Company Name</label>
+                     <div className="relative">
+                       <Building2 className="absolute left-3 top-3 text-gray-400" size={18}/>
+                       <input 
+                          type="text" 
+                          className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                          value={profileForm.name}
+                          onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
+                       />
+                     </div>
+                   </div>
+                   <div>
+                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Address</label>
+                     <input 
+                        type="text" 
+                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                        value={profileForm.address}
+                        onChange={(e) => setProfileForm({...profileForm, address: e.target.value})}
+                     />
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Phone</label>
+                        <input 
+                            type="text" 
+                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                            value={profileForm.phone}
+                            onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Email</label>
+                        <input 
+                            type="email" 
+                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                            value={profileForm.email}
+                            onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
+                        />
+                      </div>
+                   </div>
+                   <div>
+                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Social Media Links</label>
+                     <div className="grid grid-cols-3 gap-4">
+                        <input placeholder="Facebook" value={profileForm.facebook} onChange={e => setProfileForm({...profileForm, facebook: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
+                        <input placeholder="Twitter" value={profileForm.twitter} onChange={e => setProfileForm({...profileForm, twitter: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
+                        <input placeholder="Instagram" value={profileForm.instagram} onChange={e => setProfileForm({...profileForm, instagram: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
+                     </div>
+                   </div>
+                   <button type="submit" className="bg-brand-blue text-white font-bold py-3 px-8 rounded-xl hover:bg-sky-600 transition-colors shadow-lg">
+                      Save Profile
+                   </button>
+                 </form>
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'seo' && (
+            <div className="animate-fade-in grid md:grid-cols-2 gap-8">
+               <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-6">Global SEO Settings</h2>
+                  <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                    <form onSubmit={handleSeoSave} className="space-y-4">
+                       <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Global Site Title</label>
+                        <div className="relative">
+                          <Globe className="absolute left-3 top-3 text-gray-400" size={18}/>
+                          <input 
+                             type="text" 
+                             className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                             value={seoForm.title}
+                             onChange={(e) => setSeoForm({...seoForm, title: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Meta Description</label>
+                        <textarea 
+                           className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 h-24 resize-none"
+                           value={seoForm.description}
+                           onChange={(e) => setSeoForm({...seoForm, description: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Keywords</label>
+                        <input 
+                           type="text" 
+                           className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                           value={seoForm.keywords}
+                           onChange={(e) => setSeoForm({...seoForm, keywords: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                         <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Analytics ID (G-XXXX)</label>
+                         <input 
+                            type="text" 
+                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 font-mono"
+                            value={seoForm.analyticsId}
+                            onChange={(e) => setSeoForm({...seoForm, analyticsId: e.target.value})}
+                         />
+                      </div>
+
+                       {/* Tech SEO Toggles */}
+                      <div className="pt-4 border-t border-gray-100 grid grid-cols-1 gap-3">
+                         <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Settings size={14}/> Enable Sitemap.xml</span>
+                            <input 
+                               type="checkbox" 
+                               checked={seoForm.sitemapEnabled} 
+                               onChange={e => setSeoForm({...seoForm, sitemapEnabled: e.target.checked})} 
+                               className="accent-brand-blue w-4 h-4"
+                            />
+                         </div>
+                         <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Settings size={14}/> Enable Robots.txt</span>
+                            <input 
+                               type="checkbox" 
+                               checked={seoForm.robotsTxtEnabled} 
+                               onChange={e => setSeoForm({...seoForm, robotsTxtEnabled: e.target.checked})} 
+                               className="accent-brand-blue w-4 h-4"
+                            />
+                         </div>
+                         <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Settings size={14}/> Schema.org Markup</span>
+                            <input 
+                               type="checkbox" 
+                               checked={seoForm.schemaMarkupEnabled} 
+                               onChange={e => setSeoForm({...seoForm, schemaMarkupEnabled: e.target.checked})} 
+                               className="accent-brand-blue w-4 h-4"
+                            />
+                         </div>
+                      </div>
+
+                      <button type="submit" className="w-full bg-brand-green text-white font-bold py-3 px-8 rounded-xl hover:bg-green-600 transition-colors shadow-lg mt-4">
+                         Save SEO Settings
+                      </button>
+                    </form>
+                  </div>
+               </div>
+
+               <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-6">Page Performance Analysis</h2>
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                     <table className="w-full text-left">
+                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
+                           <tr>
+                              <th className="p-4">Page</th>
+                              <th className="p-4">Score</th>
+                              <th className="p-4">Status</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                           <tr className="hover:bg-gray-50">
+                              <td className="p-4 text-sm font-bold text-gray-900">/home</td>
+                              <td className="p-4 text-green-600 font-bold">98/100</td>
+                              <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Optimized</span></td>
+                           </tr>
+                           <tr className="hover:bg-gray-50">
+                              <td className="p-4 text-sm font-bold text-gray-900">/packages</td>
+                              <td className="p-4 text-green-600 font-bold">92/100</td>
+                              <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Optimized</span></td>
+                           </tr>
+                            <tr className="hover:bg-gray-50">
+                              <td className="p-4 text-sm font-bold text-gray-900">/package/:id</td>
+                              <td className="p-4 text-yellow-600 font-bold">85/100</td>
+                              <td className="p-4"><span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold">Needs Improv.</span></td>
+                           </tr>
+                            <tr className="hover:bg-gray-50">
+                              <td className="p-4 text-sm font-bold text-gray-900">/taxi</td>
+                              <td className="p-4 text-green-600 font-bold">95/100</td>
+                              <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Optimized</span></td>
+                           </tr>
+                        </tbody>
+                     </table>
+                     <div className="p-4 bg-gray-50 text-xs text-gray-500 flex items-center gap-2">
+                        <Activity size={14}/> Analysis updated just now.
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )}
+
           {/* New/Edit Package Modal */}
           {isModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 animate-fade-in max-h-[90vh] overflow-y-auto flex flex-col">
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-6 animate-fade-in max-h-[95vh] overflow-y-auto flex flex-col">
                   <div className="flex justify-between items-center mb-6">
                      <h3 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Package' : 'Add New Package'}</h3>
                      <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -588,22 +838,34 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   
                   {/* Modal Tabs */}
-                  <div className="flex gap-2 mb-6 border-b border-gray-100">
+                  <div className="flex gap-1 mb-6 border-b border-gray-100 overflow-x-auto pb-2">
                      <button 
                         onClick={() => setModalTab('basic')}
-                        className={`pb-2 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${modalTab === 'basic' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                        className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${modalTab === 'basic' ? 'border-brand-blue text-brand-blue bg-blue-50/50 rounded-t-lg' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
                      >
                         <Layout size={16}/> Basic Info
                      </button>
                      <button 
-                        onClick={() => setModalTab('advanced')}
-                        className={`pb-2 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${modalTab === 'advanced' ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                        onClick={() => setModalTab('itinerary')}
+                        className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${modalTab === 'itinerary' ? 'border-brand-blue text-brand-blue bg-blue-50/50 rounded-t-lg' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
                      >
-                        <FileJson size={16}/> Advanced Details (JSON)
+                        <Compass size={16}/> Itinerary & Overview
+                     </button>
+                     <button 
+                        onClick={() => setModalTab('guide')}
+                        className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${modalTab === 'guide' ? 'border-brand-blue text-brand-blue bg-blue-50/50 rounded-t-lg' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                     >
+                        <Utensils size={16}/> Guide (Gems/Food)
+                     </button>
+                     <button 
+                        onClick={() => setModalTab('smart')}
+                        className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${modalTab === 'smart' ? 'border-brand-blue text-brand-blue bg-blue-50/50 rounded-t-lg' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                     >
+                        <Briefcase size={16}/> Smart Travel
                      </button>
                   </div>
                   
-                  <form onSubmit={handleSavePackage} className="space-y-4">
+                  <form onSubmit={handleSavePackage} className="space-y-4 flex-grow flex flex-col">
                      
                      {modalTab === 'basic' && (
                         <div className="space-y-4 animate-fade-in">
@@ -649,7 +911,7 @@ const AdminDashboard: React.FC = () => {
                                     required
                                     type="text" 
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900" 
-                                    placeholder="e.g. 5"
+                                    placeholder="e.g. 5 Days / 4 Nights"
                                     value={newPackage.duration}
                                     onChange={e => setNewPackage({...newPackage, duration: e.target.value})}
                                  />
@@ -666,7 +928,20 @@ const AdminDashboard: React.FC = () => {
                                     <option>Adventure</option>
                                     <option>Beach</option>
                                     <option>Luxury</option>
+                                    <option>Pilgrimage</option>
                                  </select>
+                              </div>
+                           </div>
+                           <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Group Size</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900" 
+                                    placeholder="e.g. Couples / Family"
+                                    value={newPackage.groupSize}
+                                    onChange={e => setNewPackage({...newPackage, groupSize: e.target.value})}
+                                 />
                               </div>
                            </div>
                            <div>
@@ -682,6 +957,9 @@ const AdminDashboard: React.FC = () => {
                                   onChange={e => setNewPackage({...newPackage, image: e.target.value})}
                                 />
                               </div>
+                              {newPackage.image && (
+                                <img src={newPackage.image} alt="Preview" className="h-20 w-32 object-cover rounded mt-2 border border-gray-200" />
+                              )}
                            </div>
 
                            {!editingId && (
@@ -690,7 +968,7 @@ const AdminDashboard: React.FC = () => {
                                     <h4 className="font-bold text-blue-800 text-sm flex items-center gap-2"><Sparkles size={16}/> AI Auto-Fill</h4>
                                  </div>
                                  <p className="text-xs text-blue-600 mb-3">
-                                    Automatically generate Itinerary, Hidden Gems, Food Guide, and Smart Travel details.
+                                    Automatically populate Itinerary, Hidden Gems, and Smart Travel tabs based on Name & Destination.
                                  </p>
                                  <button 
                                     type="button"
@@ -705,23 +983,55 @@ const AdminDashboard: React.FC = () => {
                         </div>
                      )}
 
-                     {modalTab === 'advanced' && (
-                        <div className="animate-fade-in h-[400px] flex flex-col">
-                           <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 mb-2">
-                              <p className="text-xs text-yellow-700 flex items-center gap-2">
-                                 <Sparkles size={12}/> Edit Itinerary, Hidden Gems, Packing List, and more here. Valid JSON required.
+                     {modalTab === 'itinerary' && (
+                        <div className="animate-fade-in flex flex-col h-[500px]">
+                           <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-2">
+                              <p className="text-xs text-blue-700 flex items-center gap-2">
+                                 <FileJson size={12}/> JSON Editor for: shortDesc, longDesc, bestTime, idealFor, inclusions, exclusions, itinerary.
                               </p>
                            </div>
                            <textarea
                               className="w-full flex-grow p-4 bg-gray-900 text-green-400 font-mono text-xs rounded-xl border border-gray-700 focus:ring-2 focus:ring-brand-blue outline-none resize-none"
-                              value={jsonInput}
-                              onChange={e => setJsonInput(e.target.value)}
-                              placeholder="{ ... }"
+                              value={itineraryJson}
+                              onChange={e => setItineraryJson(e.target.value)}
+                              spellCheck={false}
+                           ></textarea>
+                        </div>
+                     )}
+
+                     {modalTab === 'guide' && (
+                        <div className="animate-fade-in flex flex-col h-[500px]">
+                           <div className="bg-orange-50 p-3 rounded-lg border border-orange-100 mb-2">
+                              <p className="text-xs text-orange-700 flex items-center gap-2">
+                                 <FileJson size={12}/> JSON Editor for: hiddenGems, foodGuide.
+                              </p>
+                           </div>
+                           <textarea
+                              className="w-full flex-grow p-4 bg-gray-900 text-green-400 font-mono text-xs rounded-xl border border-gray-700 focus:ring-2 focus:ring-brand-blue outline-none resize-none"
+                              value={guideJson}
+                              onChange={e => setGuideJson(e.target.value)}
+                              spellCheck={false}
+                           ></textarea>
+                        </div>
+                     )}
+
+                     {modalTab === 'smart' && (
+                        <div className="animate-fade-in flex flex-col h-[500px]">
+                           <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 mb-2">
+                              <p className="text-xs text-purple-700 flex items-center gap-2">
+                                 <FileJson size={12}/> JSON Editor for: packingList, safetyTips, visaInfo, airportInfo.
+                              </p>
+                           </div>
+                           <textarea
+                              className="w-full flex-grow p-4 bg-gray-900 text-green-400 font-mono text-xs rounded-xl border border-gray-700 focus:ring-2 focus:ring-brand-blue outline-none resize-none"
+                              value={smartJson}
+                              onChange={e => setSmartJson(e.target.value)}
+                              spellCheck={false}
                            ></textarea>
                         </div>
                      )}
                      
-                     <div className="pt-4 flex gap-3 border-t border-gray-100 mt-4">
+                     <div className="pt-4 flex gap-3 border-t border-gray-100 mt-auto">
                         <button 
                            type="button" 
                            onClick={() => setIsModalOpen(false)}

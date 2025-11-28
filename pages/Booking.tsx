@@ -1,15 +1,17 @@
+
 import React, { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { CheckCircle, CreditCard, User, Shield, HelpCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle, CreditCard, User, Shield, HelpCircle, ArrowRight, Calendar } from 'lucide-react';
 import { Package, Driver } from '../types';
 import { useCurrency } from '../CurrencyContext';
 import { useGlobal } from '../GlobalContext';
+import { formatDate } from '../utils';
 
 const Booking: React.FC = () => {
   const { formatPrice } = useCurrency();
   const { addBooking } = useGlobal(); // Access global addBooking function
   const location = useLocation();
-  const state = location.state as { type: string, item: Package | Driver } | undefined;
+  const state = location.state as { type: string, item: Package | Driver, travelers?: number, travelDate?: string } | undefined;
   
   const [step, setStep] = useState(1);
   const [paymentStatus, setPaymentStatus] = useState<'Paid' | 'Pending'>('Pending');
@@ -17,7 +19,8 @@ const Booking: React.FC = () => {
     name: '',
     email: '',
     phone: '',
-    guests: 1,
+    guests: state?.travelers || 1,
+    travelDate: state?.travelDate || '',
     insurance: false
   });
 
@@ -35,10 +38,15 @@ const Booking: React.FC = () => {
   const basePrice = 'price' in item ? item.price : item.rates.baseFare; // Simplified logic
   const tax = basePrice * 0.05;
   const insuranceCost = formData.insurance ? 50 : 0;
+  // Dynamic Total Calculation
   const total = (basePrice * formData.guests) + tax + insuranceCost;
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.travelDate) {
+        alert("Please select a travel date.");
+        return;
+    }
     setStep(step + 1);
   };
 
@@ -53,6 +61,7 @@ const Booking: React.FC = () => {
       customerPhone: formData.phone,
       type: state.type as 'Package' | 'Taxi',
       date: new Date().toISOString(),
+      travelDate: formData.travelDate,
       status: status,
       totalAmount: total,
       paid: paid,
@@ -138,15 +147,30 @@ const Booking: React.FC = () => {
                         onChange={e => setFormData({...formData, email: e.target.value})}
                       />
                   </div>
-                   <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Number of Travelers</label>
-                      <input 
-                        type="number" 
-                        min="1"
-                        className="w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-400"
-                        value={formData.guests}
-                        onChange={e => setFormData({...formData, guests: parseInt(e.target.value)})}
-                      />
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Number of Travelers</label>
+                        <input 
+                            type="number" 
+                            min="1"
+                            className="w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-400"
+                            value={formData.guests}
+                            onChange={e => setFormData({...formData, guests: parseInt(e.target.value)})}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Travel Date</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-3 text-gray-400" size={18}/>
+                            <input 
+                                required
+                                type="date"
+                                className="w-full pl-10 pr-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-400"
+                                value={formData.travelDate}
+                                onChange={e => setFormData({...formData, travelDate: e.target.value})}
+                            />
+                        </div>
+                    </div>
                   </div>
                 </div>
 
@@ -239,6 +263,10 @@ const Booking: React.FC = () => {
                       <span className="text-gray-500">Reference:</span>
                       <span className="font-mono font-bold text-gray-900">HP-NEW</span>
                    </div>
+                    <div className="flex justify-between mb-2 text-sm">
+                      <span className="text-gray-500">Travel Date:</span>
+                      <span className="font-bold text-gray-900">{formatDate(formData.travelDate)}</span>
+                   </div>
                    <div className="flex justify-between mb-2 text-sm">
                       <span className="text-gray-500">Status:</span>
                       <span className={`font-bold ${paymentStatus === 'Paid' ? 'text-green-600' : 'text-orange-600'}`}>
@@ -270,6 +298,7 @@ const Booking: React.FC = () => {
                <div className="mb-4">
                   <h4 className="font-semibold text-gray-800 leading-tight">{'price' in item ? item.name : `${item.vehicle.model} Taxi`}</h4>
                   <div className="text-xs text-gray-500 capitalize mt-1">{state.type} Booking</div>
+                  {formData.travelDate && <div className="text-xs text-brand-blue mt-1 font-bold">Travel: {formatDate(formData.travelDate)}</div>}
                </div>
                
                <div className="space-y-3 text-sm text-gray-600 mb-4 border-b border-gray-100 pb-4">

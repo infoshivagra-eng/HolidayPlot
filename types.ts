@@ -1,3 +1,4 @@
+
 // Travel Package Types
 export interface ItineraryDay {
   day: number;
@@ -55,7 +56,7 @@ export interface Package {
   shortDesc: string;
   longDesc: string;
   images: string[];
-  category: 'Adventure' | 'Beach' | 'Culture' | 'Luxury' | 'Budget' | 'Nature';
+  category: 'Adventure' | 'Beach' | 'Culture' | 'Luxury' | 'Budget' | 'Nature' | 'Pilgrimage';
   inclusions: string[];
   exclusions: string[];
   itinerary: ItineraryDay[];
@@ -124,9 +125,34 @@ export interface Booking {
   customerEmail: string;
   customerPhone: string;
   type: 'Package' | 'Taxi';
-  date: string;
+  date: string; // Booking creation date
+  travelDate?: string; // Date of travel
   status: 'Confirmed' | 'Pending' | 'Cancelled';
   totalAmount: number;
   paid: boolean;
   travelers: number;
+}
+
+// Admin & System Types
+export interface CompanyProfile {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  logo: string;
+  facebook: string;
+  twitter: string;
+  instagram: string;
+}
+
+export interface SeoSettings {
+  title: string;
+  description: string;
+  keywords: string;
+  ogImage: string;
+  // Tech SEO
+  sitemapEnabled: boolean;
+  robotsTxtEnabled: boolean;
+  schemaMarkupEnabled: boolean;
+  analyticsId: string;
 }
