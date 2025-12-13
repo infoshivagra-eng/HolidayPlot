@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Users, Package as PkgIcon, DollarSign, Calendar, Plus, Lock, LogOut, MapPin, Search, Trash2, CheckCircle, Sparkles, Loader2, Image as ImageIcon, Edit, Save, FileJson, Layout, Building2, Globe, Settings, Activity, Compass, Utensils, Briefcase, Database } from 'lucide-react';
 import { useCurrency } from '../CurrencyContext';
 import { useGlobal } from '../GlobalContext';
-import { formatDate } from '../utils';
+import { formatDate, getSmartApiKey } from '../utils';
 import { GoogleGenAI } from "@google/genai";
 import { Package } from '../types';
 
@@ -260,10 +260,9 @@ const AdminDashboard: React.FC = () => {
     setIsGenerating(true);
 
     try {
-      // Safety check for process.env
-      const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+      const apiKey = getSmartApiKey();
       if (!apiKey) {
-         throw new Error("API Key missing");
+         throw new Error("Missing API Key. Check Environment Variables.");
       }
       const ai = new GoogleGenAI({ apiKey });
       const prompt = `
@@ -322,9 +321,9 @@ const AdminDashboard: React.FC = () => {
       setSmartJson(JSON.stringify(generated.smart, null, 2));
       
       setModalTab('itinerary');
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Generation failed", error);
-      alert("AI Generation failed or API Key is missing. Please try again or fill manually.");
+      alert(`AI Generation failed: ${error.message || 'Unknown Error'}`);
     } finally {
       setIsGenerating(false);
     }

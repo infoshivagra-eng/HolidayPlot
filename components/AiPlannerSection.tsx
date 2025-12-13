@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Map, Calendar, Wallet, User, Loader2, ArrowRight } from 'lucide-react';
+import { Sparkles, Map, Calendar, Wallet, User, Loader2, ArrowRight, AlertTriangle } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { useCurrency } from '../CurrencyContext';
+import { getSmartApiKey } from '../utils';
 
 interface AiPlannerSectionProps {
   embedded?: boolean;
@@ -27,10 +28,10 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
     setItinerary('');
 
     try {
-      // Validate API Key existence before making request
-      const apiKey = process.env.API_KEY;
+      const apiKey = getSmartApiKey();
+      
       if (!apiKey) {
-        throw new Error("API Key is missing. Please check your environment configuration.");
+        throw new Error("Missing API Key. Please set API_KEY or VITE_API_KEY in your environment variables.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -39,28 +40,45 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
       Group: ${formData.travelers}. 
       Interests: ${formData.interests || 'General sightseeing'}. 
       
-      Format the response using HTML tags for styling (e.g., <h3 class="text-xl font-bold text-brand-blue mt-4">Day 1</h3>, <ul class="list-disc pl-5 space-y-2 mt-2"><li>Activity</li></ul>, <strong>Bold</strong>). 
-      Make it engaging and practical. Include estimated costs in ${currency}.`;
+      Format the response using HTML tags for styling:
+      - Use <h3 class="text-xl font-bold text-brand-blue mt-6 mb-2">Day X: Title</h3> for days.
+      - Use <ul class="list-disc pl-5 space-y-2 mb-4 text-gray-700"> for lists.
+      - Use <strong> for emphasis.
+      - Use <p class="mb-2"> for paragraphs.
+      
+      Make it engaging, vibrant, and practical. Include estimated costs in ${currency}. 
+      Do not include markdown code blocks (like \`\`\`html), just return the raw HTML content.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
       });
 
-      setItinerary(response.text);
+      // Clean up potential markdown code blocks if the model includes them despite instructions
+      let text = response.text || '';
+      text = text.replace(/```html/g, '').replace(/```/g, '');
+
+      setItinerary(text);
     } catch (error: any) {
       console.error("Error generating itinerary:", error);
       const msg = error.message || "Unknown error occurred";
       
       // Detailed error message for UI
       setItinerary(`
-        <div class="bg-red-50 p-4 rounded-xl border border-red-200 text-red-700">
-          <div class="font-bold flex items-center gap-2">
-             <span>⚠️</span>
-             Planning Failed
+        <div class="bg-red-50 p-6 rounded-xl border border-red-200 text-red-800">
+          <div class="flex items-start gap-3">
+             <div class="bg-red-100 p-2 rounded-full text-red-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+             </div>
+             <div>
+                <h4 class="font-bold text-lg mb-1">Planning Failed</h4>
+                <p class="text-sm mb-3">We encountered an issue while generating your trip plan.</p>
+                <div class="bg-white p-3 rounded-lg border border-red-100 font-mono text-xs text-red-600 break-all">
+                   Error: ${msg}
+                </div>
+                ${msg.includes("Key") ? `<p class="text-xs mt-3 text-red-700"><strong>Note for Admin:</strong> Ensure <code>API_KEY</code> or <code>VITE_API_KEY</code> is set in your Netlify/Vercel environment settings.</p>` : ''}
+             </div>
           </div>
-          <p class="text-sm mt-1">We couldn't generate your plan.</p>
-          <p class="text-xs mt-2 font-mono bg-red-100 p-2 rounded">Error: ${msg}</p>
         </div>
       `);
     } finally {
@@ -169,17 +187,20 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
         {/* Results Pane - Visible when itinerary exists */}
         {itinerary && (
            <div className="bg-white rounded-xl shadow-inner p-6 border border-gray-100 max-h-[500px] overflow-y-auto custom-scrollbar animate-fade-in">
-              <h3 className="text-xl font-bold mb-4 text-brand-blue flex items-center gap-2">
+              <h3 className="text-xl font-bold mb-4 text-brand-blue flex items-center gap-2 sticky top-0 bg-white/95 backdrop-blur py-2 border-b border-gray-100">
                  <Sparkles size={20} className="text-yellow-400 fill-current"/> Your AI Itinerary
               </h3>
               <div className="prose prose-sm prose-blue max-w-none text-gray-700">
                 <div dangerouslySetInnerHTML={{ __html: itinerary }} />
               </div>
-              <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-                 <button className="text-brand-orange font-bold text-sm hover:underline flex items-center justify-center gap-1 mx-auto">
-                    Save this Plan (PDF) <ArrowRight size={14}/>
-                 </button>
-              </div>
+              
+              {!itinerary.includes("Planning Failed") && (
+                <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+                   <button className="text-brand-orange font-bold text-sm hover:underline flex items-center justify-center gap-1 mx-auto">
+                      Save this Plan (PDF) <ArrowRight size={14}/>
+                   </button>
+                </div>
+              )}
            </div>
         )}
       </div>
