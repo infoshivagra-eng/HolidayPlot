@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Sparkles, Map, Calendar, Wallet, User, Loader2, ArrowRight } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
@@ -26,7 +27,13 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
     setItinerary('');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // Validate API Key existence before making request
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        throw new Error("API Key is missing. Please check your environment configuration.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `Create a detailed ${formData.days}-day travel itinerary for ${formData.destination || 'a surprise destination in India'}, India. 
       Budget: ${formData.budget} (${currency}). 
       Group: ${formData.travelers}. 
@@ -41,9 +48,21 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
       });
 
       setItinerary(response.text);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating itinerary:", error);
-      setItinerary('<p class="text-red-500">Sorry, we encountered an error while generating your plan. Please try again later.</p>');
+      const msg = error.message || "Unknown error occurred";
+      
+      // Detailed error message for UI
+      setItinerary(`
+        <div class="bg-red-50 p-4 rounded-xl border border-red-200 text-red-700">
+          <div class="font-bold flex items-center gap-2">
+             <span>⚠️</span>
+             Planning Failed
+          </div>
+          <p class="text-sm mt-1">We couldn't generate your plan.</p>
+          <p class="text-xs mt-2 font-mono bg-red-100 p-2 rounded">Error: ${msg}</p>
+        </div>
+      `);
     } finally {
       setLoading(false);
     }
