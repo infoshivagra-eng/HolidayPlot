@@ -164,6 +164,13 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const deletePackage = async (id: string) => {
+    // Check for dependencies (Bookings)
+    const hasBookings = bookings.some(b => b.itemId === id);
+    if (hasBookings) {
+        alert("Cannot delete this package because there are bookings associated with it. Please delete the bookings first.");
+        return;
+    }
+
     // Optimistic Update
     setPackages(prev => prev.filter(p => p.id !== id));
     
@@ -171,7 +178,8 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const { error } = await supabase.from('packages').delete().eq('id', id);
         if (error) {
             console.error("Error deleting package from DB:", error);
-            // We could roll back state here if necessary, but optimistic is preferred for UI speed
+            alert("Failed to delete package from database. " + error.message);
+            // Rollback optimistic update if needed, or refresh page
         }
     } catch (e) {
         console.error("Exception in deletePackage:", e);
