@@ -71,6 +71,9 @@ export interface Package {
   safetyTips?: SafetyTip[];
   visaInfo?: VisaInfo;
   airportInfo?: AirportInfo;
+  
+  // System fields
+  created_at?: string;
 }
 
 // Driver & Taxi Types
@@ -140,6 +143,7 @@ export interface CompanyProfile {
   phone: string;
   email: string;
   logo: string;
+  heroImage?: string; // New field for Home Page Banner
   facebook: string;
   twitter: string;
   instagram: string;

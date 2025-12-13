@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Clock, Star, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -11,8 +12,18 @@ interface PackageCardProps {
 const PackageCard: React.FC<PackageCardProps> = ({ pkg }) => {
   const { formatPrice } = useCurrency();
 
+  // Calculate if package is new (within last 7 days)
+  const isNew = React.useMemo(() => {
+    if (!pkg.created_at) return false;
+    const created = new Date(pkg.created_at);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - created.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    return diffDays <= 7;
+  }, [pkg.created_at]);
+
   return (
-    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full">
+    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full relative">
       <div className="relative h-56 overflow-hidden">
         <img
           src={pkg.images[0]}
@@ -22,11 +33,20 @@ const PackageCard: React.FC<PackageCardProps> = ({ pkg }) => {
         <div className="absolute top-4 right-4 bg-white/95 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
           {pkg.category}
         </div>
-        {pkg.price < 400 && ( // Threshold adjusted for USD prices
-          <div className="absolute top-4 left-4 bg-brand-orange text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-            Best Value
-          </div>
-        )}
+        
+        {/* Badges Container */}
+        <div className="absolute top-4 left-4 flex flex-col gap-2">
+           {isNew && (
+             <div className="bg-brand-green text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm animate-pulse">
+                New Arrival
+             </div>
+           )}
+           {pkg.price < 400 && ( 
+             <div className="bg-brand-orange text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+               Best Value
+             </div>
+           )}
+        </div>
       </div>
       
       <div className="p-5 flex flex-col flex-grow">

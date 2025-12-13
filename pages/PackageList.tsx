@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Filter, SlidersHorizontal } from 'lucide-react';
+import { Filter, SlidersHorizontal, Check } from 'lucide-react';
 import PackageCard from '../components/PackageCard';
 import { useCurrency } from '../CurrencyContext';
 import { useGlobal } from '../GlobalContext';
@@ -9,8 +10,8 @@ const PackageList: React.FC = () => {
   const { packages } = useGlobal(); // Use global packages
   const [filterCategory, setFilterCategory] = useState<string>('All');
   
-  // Max price state in Base Currency (USD) for simplicity in filtering logic
-  const [maxPriceUSD, setMaxPriceUSD] = useState<number>(2000); 
+  // Max price state in Base Currency (USD)
+  const [maxPriceUSD, setMaxPriceUSD] = useState<number>(3000); 
 
   const filteredPackages = packages.filter(pkg => {
     const matchCategory = filterCategory === 'All' || pkg.category === filterCategory;
@@ -18,7 +19,7 @@ const PackageList: React.FC = () => {
     return matchCategory && matchPrice;
   });
 
-  const categories = ['All', 'Adventure', 'Beach', 'Culture', 'Nature', 'Luxury'];
+  const categories = ['All', 'Adventure', 'Beach', 'Culture', 'Nature', 'Luxury', 'Pilgrimage', 'Budget'];
 
   // Calculate display value for range slider
   const displayMaxPrice = formatPrice(maxPriceUSD);
@@ -47,8 +48,8 @@ const PackageList: React.FC = () => {
                 <div className="space-y-2">
                   {categories.map(cat => (
                     <label key={cat} className="flex items-center gap-3 cursor-pointer group">
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${filterCategory === cat ? 'border-brand-blue' : 'border-gray-300'}`}>
-                        {filterCategory === cat && <div className="w-2.5 h-2.5 bg-brand-blue rounded-full"></div>}
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${filterCategory === cat ? 'border-brand-blue bg-brand-blue' : 'border-gray-300 bg-white'}`}>
+                        {filterCategory === cat && <Check size={12} className="text-white"/>}
                       </div>
                       <input 
                         type="radio" 
@@ -71,7 +72,7 @@ const PackageList: React.FC = () => {
                 <input 
                   type="range" 
                   min="100" 
-                  max="2000" 
+                  max="5000" 
                   step="50"
                   value={maxPriceUSD}
                   onChange={(e) => setMaxPriceUSD(Number(e.target.value))}
@@ -79,7 +80,7 @@ const PackageList: React.FC = () => {
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-2">
                   <span>{formatPrice(100)}</span>
-                  <span>{formatPrice(2000)}+</span>
+                  <span>{formatPrice(5000)}+</span>
                 </div>
               </div>
             </div>
@@ -111,7 +112,7 @@ const PackageList: React.FC = () => {
                 <h3 className="text-xl font-bold text-gray-900 mb-2">No packages found</h3>
                 <p className="text-gray-500 mb-6">Try adjusting your filters to find what you're looking for.</p>
                 <button 
-                  onClick={() => {setFilterCategory('All'); setMaxPriceUSD(2000);}}
+                  onClick={() => {setFilterCategory('All'); setMaxPriceUSD(5000);}}
                   className="text-brand-blue font-semibold hover:underline"
                 >
                   Reset Filters

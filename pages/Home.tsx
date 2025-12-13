@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Search, Map, ShieldCheck, Heart, ArrowRight, Sparkles, Quote } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -8,13 +9,15 @@ import { useGlobal } from '../GlobalContext';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { packages } = useGlobal(); // Use global packages
+  const { packages, companyProfile } = useGlobal(); // Use global packages and profile
   const [searchQuery, setSearchQuery] = React.useState('');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     navigate('/packages');
   };
+
+  const heroImage = companyProfile.heroImage || 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80';
 
   return (
     <div className="space-y-0">
@@ -23,9 +26,9 @@ const Home: React.FC = () => {
         {/* Background */}
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
+            src={heroImage}
             alt="India Travel"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-all duration-700"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-brand-dark/90"></div>
         </div>
@@ -82,7 +85,7 @@ const Home: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {packages.slice(0, 3).map((pkg) => (
+            {packages.slice(0, 6).map((pkg) => (
               <PackageCard key={pkg.id} pkg={pkg} />
             ))}
           </div>
@@ -165,7 +168,7 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
              <h2 className="text-4xl font-bold text-gray-900 mb-4">Stories from the Road</h2>
-             <p className="text-gray-500">Real experiences from our community of travelers.</p>
+             <p className="text-gray-600">Real experiences from our community of travelers.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -1,29 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, Package as PkgIcon, DollarSign, Calendar, Plus, Lock, LogOut, MapPin, Search, Trash2, CheckCircle, Sparkles, Loader2, Image as ImageIcon, Edit, Save, FileJson, Layout, Building2, Globe, Settings, Activity, Compass, Utensils, Briefcase } from 'lucide-react';
+import { Users, Package as PkgIcon, DollarSign, Calendar, Plus, Lock, LogOut, MapPin, Search, Trash2, CheckCircle, Sparkles, Loader2, Image as ImageIcon, Edit, Save, FileJson, Layout, Building2, Globe, Settings, Activity, Compass, Utensils, Briefcase, Database } from 'lucide-react';
 import { useCurrency } from '../CurrencyContext';
 import { useGlobal } from '../GlobalContext';
 import { formatDate } from '../utils';
 import { GoogleGenAI } from "@google/genai";
 import { Package } from '../types';
 
-const data = [
-  { name: 'Mon', revenue: 4000 },
-  { name: 'Tue', revenue: 3000 },
-  { name: 'Wed', revenue: 2000 },
-  { name: 'Thu', revenue: 2780 },
-  { name: 'Fri', revenue: 1890 },
-  { name: 'Sat', revenue: 6390 },
-  { name: 'Sun', revenue: 3490 },
-];
-
 const AdminDashboard: React.FC = () => {
   const { formatPrice, currency } = useCurrency();
   const { 
     packages, addPackage, updatePackage, bookings, drivers, 
     deleteDriver, updateDriverStatus, updateBookingStatus,
-    companyProfile, updateCompanyProfile, seoSettings, updateSeoSettings
+    companyProfile, updateCompanyProfile, seoSettings, updateSeoSettings,
+    deletePackage
   } = useGlobal();
   
   // Auth State
@@ -34,6 +25,9 @@ const AdminDashboard: React.FC = () => {
 
   // UI State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'packages' | 'enquiries' | 'drivers' | 'profile' | 'seo'>('dashboard');
+  
+  // Chart State
+  const [chartData, setChartData] = useState<{name: string, revenue: number}[]>([]);
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,7 +56,14 @@ const AdminDashboard: React.FC = () => {
   const [profileForm, setProfileForm] = useState(companyProfile);
   const [seoForm, setSeoForm] = useState(seoSettings);
 
-  // Persistent Login Check
+  // Database Config State
+  const [dbConfig, setDbConfig] = useState({
+    projectName: '',
+    url: '',
+    key: ''
+  });
+
+  // Persistent Login Check & Load DB Config
   useEffect(() => {
     const storedAuth = localStorage.getItem('holidayPotAdminAuth');
     if (storedAuth === 'true') {
@@ -71,7 +72,53 @@ const AdminDashboard: React.FC = () => {
     // Initialize forms with context data
     setProfileForm(companyProfile);
     setSeoForm(seoSettings);
+
+    // Load stored DB config
+    const storedName = localStorage.getItem('holidaypot_supabase_project_name') || '';
+    const storedUrl = localStorage.getItem('holidaypot_supabase_url') || '';
+    const storedKey = localStorage.getItem('holidaypot_supabase_key') || '';
+    setDbConfig({ projectName: storedName, url: storedUrl, key: storedKey });
+
   }, [companyProfile, seoSettings]);
+
+  // Update chart data when bookings change
+  useEffect(() => {
+    if (bookings.length === 0) {
+        setChartData([
+           { name: 'Mon', revenue: 0 },
+           { name: 'Tue', revenue: 0 },
+           { name: 'Wed', revenue: 0 },
+           { name: 'Thu', revenue: 0 },
+           { name: 'Fri', revenue: 0 },
+           { name: 'Sat', revenue: 0 },
+           { name: 'Sun', revenue: 0 },
+        ]);
+        return;
+    }
+
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const revenueByDay = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
+    
+    bookings.forEach(b => {
+        // Count confirmed or paid bookings
+        if(b.status === 'Confirmed' || b.paid) {
+            const d = new Date(b.date);
+            if(!isNaN(d.getTime())) {
+                revenueByDay[d.getDay() as keyof typeof revenueByDay] += b.totalAmount;
+            }
+        }
+    });
+
+    // Create chart data sorted Mon-Sun (or Sun-Sat)
+    // Let's do Mon-Sun for business week view
+    const sortedDays = [1, 2, 3, 4, 5, 6, 0]; // Mon to Sun indices
+    const processedData = sortedDays.map(dayIndex => ({
+       name: days[dayIndex],
+       revenue: revenueByDay[dayIndex as keyof typeof revenueByDay]
+    }));
+
+    setChartData(processedData);
+  }, [bookings]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,10 +144,28 @@ const AdminDashboard: React.FC = () => {
     alert('Company Profile Updated!');
   };
 
+  const handleDbSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('holidaypot_supabase_project_name', dbConfig.projectName);
+    localStorage.setItem('holidaypot_supabase_url', dbConfig.url);
+    localStorage.setItem('holidaypot_supabase_key', dbConfig.key);
+    if(window.confirm(`Database configuration for "${dbConfig.projectName}" saved. The page must reload to apply changes. Reload now?`)) {
+        window.location.reload();
+    }
+  };
+
   const handleSeoSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateSeoSettings(seoForm);
     alert('SEO Settings Updated!');
+  };
+
+  const handleDeletePackage = (e: React.MouseEvent, id: string, name: string) => {
+     e.preventDefault();
+     e.stopPropagation();
+     if(window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+         deletePackage(id);
+     }
   };
 
   const resetForm = () => {
@@ -283,6 +348,7 @@ const AdminDashboard: React.FC = () => {
       reviewsCount: originalPackage ? originalPackage.reviewsCount : 0,
       slug: newPackage.name.toLowerCase().replace(/\s+/g, '-'),
       images: [newPackage.image], // Simplification: Overwrite with cover image
+      created_at: originalPackage?.created_at || new Date().toISOString(),
       
       // Merge parsed data
       ...parsedOverview,
@@ -424,7 +490,7 @@ const AdminDashboard: React.FC = () => {
                     <h3 className="font-bold text-gray-800 mb-6">Revenue Overview (USD)</h3>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={data}>
+                          <BarChart data={chartData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} />
                             <YAxis axisLine={false} tickLine={false} />
@@ -507,9 +573,18 @@ const AdminDashboard: React.FC = () => {
                                   </span>
                                </td>
                                <td className="p-4">
-                                  <button onClick={() => handleEditClick(pkg)} className="text-gray-400 hover:text-brand-blue font-medium text-sm flex items-center gap-1">
-                                    <Edit size={14}/> Edit
-                                  </button>
+                                  <div className="flex gap-2">
+                                     <button onClick={() => handleEditClick(pkg)} className="text-gray-400 hover:text-brand-blue font-medium text-sm flex items-center gap-1">
+                                       <Edit size={14}/> Edit
+                                     </button>
+                                     <button 
+                                      type="button"
+                                      onClick={(e) => handleDeletePackage(e, pkg.id, pkg.name)} 
+                                      className="text-gray-400 hover:text-red-500 font-medium text-sm flex items-center gap-1"
+                                      >
+                                       <Trash2 size={14}/>
+                                     </button>
+                                  </div>
                                </td>
                             </tr>
                          ))}
@@ -641,62 +716,124 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'profile' && (
             <div className="animate-fade-in">
-               <h2 className="text-xl font-bold text-gray-900 mb-6">Company Profile</h2>
-               <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-2xl">
-                 <form onSubmit={handleProfileSave} className="space-y-4">
-                   <div>
-                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Company Name</label>
-                     <div className="relative">
-                       <Building2 className="absolute left-3 top-3 text-gray-400" size={18}/>
-                       <input 
-                          type="text" 
-                          className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
-                          value={profileForm.name}
-                          onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
-                       />
+               <div className="grid md:grid-cols-2 gap-8">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Company Profile</h2>
+                    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                      <form onSubmit={handleProfileSave} className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Company Name</label>
+                          <div className="relative">
+                            <Building2 className="absolute left-3 top-3 text-gray-400" size={18}/>
+                            <input 
+                                type="text" 
+                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                value={profileForm.name}
+                                onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Address</label>
+                          <input 
+                              type="text" 
+                              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                              value={profileForm.address}
+                              onChange={(e) => setProfileForm({...profileForm, address: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Home Page Banner Image (URL)</label>
+                           <div className="relative">
+                             <ImageIcon className="absolute left-3 top-3 text-gray-400" size={18}/>
+                             <input 
+                                 type="text" 
+                                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                 value={profileForm.heroImage || ''}
+                                 placeholder="https://..."
+                                 onChange={(e) => setProfileForm({...profileForm, heroImage: e.target.value})}
+                             />
+                           </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Phone</label>
+                              <input 
+                                  type="text" 
+                                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                  value={profileForm.phone}
+                                  onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Email</label>
+                              <input 
+                                  type="email" 
+                                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                  value={profileForm.email}
+                                  onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
+                              />
+                            </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Social Media Links</label>
+                          <div className="grid grid-cols-3 gap-4">
+                              <input placeholder="Facebook" value={profileForm.facebook} onChange={e => setProfileForm({...profileForm, facebook: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
+                              <input placeholder="Twitter" value={profileForm.twitter} onChange={e => setProfileForm({...profileForm, twitter: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
+                              <input placeholder="Instagram" value={profileForm.instagram} onChange={e => setProfileForm({...profileForm, instagram: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
+                          </div>
+                        </div>
+                        <button type="submit" className="bg-brand-blue text-white font-bold py-3 px-8 rounded-xl hover:bg-sky-600 transition-colors shadow-lg">
+                            Save Profile
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+
+                  <div>
+                     <h2 className="text-xl font-bold text-gray-900 mb-6">Database Configuration</h2>
+                     <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                       <div className="mb-4 p-4 bg-orange-50 border border-orange-100 rounded-lg text-sm text-orange-800">
+                          <strong className="flex items-center gap-2 mb-1"><Database size={16}/> Advanced Settings</strong>
+                          Override the default Supabase connection. Leave empty to use default. Page will reload on save.
+                       </div>
+                       <form onSubmit={handleDbSave} className="space-y-4">
+                          <div>
+                             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Project Name (Optional)</label>
+                             <input 
+                                type="text" 
+                                placeholder="My Production DB"
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-orange text-gray-900 font-mono text-sm"
+                                value={dbConfig.projectName}
+                                onChange={(e) => setDbConfig({...dbConfig, projectName: e.target.value})}
+                             />
+                          </div>
+                          <div>
+                             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Supabase URL</label>
+                             <input 
+                                type="text" 
+                                placeholder="https://..."
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-orange text-gray-900 font-mono text-sm"
+                                value={dbConfig.url}
+                                onChange={(e) => setDbConfig({...dbConfig, url: e.target.value})}
+                             />
+                          </div>
+                          <div>
+                             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Supabase Anon Key</label>
+                             <input 
+                                type="password" 
+                                placeholder="eyJ..."
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-orange text-gray-900 font-mono text-sm"
+                                value={dbConfig.key}
+                                onChange={(e) => setDbConfig({...dbConfig, key: e.target.value})}
+                             />
+                          </div>
+                          <button type="submit" className="w-full bg-brand-orange text-white font-bold py-3 px-8 rounded-xl hover:bg-orange-600 transition-colors shadow-lg">
+                             Save & Connect
+                          </button>
+                       </form>
                      </div>
-                   </div>
-                   <div>
-                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Address</label>
-                     <input 
-                        type="text" 
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
-                        value={profileForm.address}
-                        onChange={(e) => setProfileForm({...profileForm, address: e.target.value})}
-                     />
-                   </div>
-                   <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Phone</label>
-                        <input 
-                            type="text" 
-                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
-                            value={profileForm.phone}
-                            onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Email</label>
-                        <input 
-                            type="email" 
-                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
-                            value={profileForm.email}
-                            onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
-                        />
-                      </div>
-                   </div>
-                   <div>
-                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Social Media Links</label>
-                     <div className="grid grid-cols-3 gap-4">
-                        <input placeholder="Facebook" value={profileForm.facebook} onChange={e => setProfileForm({...profileForm, facebook: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
-                        <input placeholder="Twitter" value={profileForm.twitter} onChange={e => setProfileForm({...profileForm, twitter: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
-                        <input placeholder="Instagram" value={profileForm.instagram} onChange={e => setProfileForm({...profileForm, instagram: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
-                     </div>
-                   </div>
-                   <button type="submit" className="bg-brand-blue text-white font-bold py-3 px-8 rounded-xl hover:bg-sky-600 transition-colors shadow-lg">
-                      Save Profile
-                   </button>
-                 </form>
+                  </div>
                </div>
             </div>
           )}
