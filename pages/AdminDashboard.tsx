@@ -161,8 +161,9 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleDeletePackage = (e: React.MouseEvent, id: string, name: string) => {
-     e.preventDefault();
+     // Explicitly stop propagation to prevent row click or other events
      e.stopPropagation();
+     // Use window.confirm for simplicity and robustness
      if(window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
          deletePackage(id);
      }
@@ -258,7 +259,12 @@ const AdminDashboard: React.FC = () => {
     setIsGenerating(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // Safety check for process.env
+      const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+      if (!apiKey) {
+         throw new Error("API Key missing");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `
         Create a detailed JSON object for a travel package.
         Destination: "${newPackage.destination}"
@@ -317,7 +323,7 @@ const AdminDashboard: React.FC = () => {
       setModalTab('itinerary');
     } catch (error) {
       console.error("AI Generation failed", error);
-      alert("AI Generation failed. Please try again or fill manually.");
+      alert("AI Generation failed or API Key is missing. Please try again or fill manually.");
     } finally {
       setIsGenerating(false);
     }
