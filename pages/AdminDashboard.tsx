@@ -162,8 +162,9 @@ const AdminDashboard: React.FC = () => {
 
   const handleDeletePackage = (e: React.MouseEvent, id: string, name: string) => {
      // Explicitly stop propagation to prevent row click or other events
+     e.preventDefault();
      e.stopPropagation();
-     // Use window.confirm for simplicity and robustness
+     
      if(window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
          deletePackage(id);
      }
@@ -704,7 +705,11 @@ const AdminDashboard: React.FC = () => {
                                ) : (
                                   <button onClick={() => updateDriverStatus(driver.id, 'Busy')} className="flex-1 bg-orange-50 text-orange-700 py-2 rounded-lg text-xs font-bold hover:bg-orange-100">Mark Busy</button>
                                )}
-                               <button onClick={() => deleteDriver(driver.id)} className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100">
+                               <button 
+                                type="button" 
+                                onClick={() => deleteDriver(driver.id)} 
+                                className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"
+                               >
                                   <Trash2 size={16}/>
                                </button>
                             </div>
