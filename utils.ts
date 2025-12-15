@@ -20,12 +20,12 @@ export const convertPrice = (price: number, currency: 'USD' | 'INR'): string => 
 };
 
 export const getSmartApiKey = (): string | undefined => {
-  // Check process.env.API_KEY (Standard for many builds)
+  // Priority 1: Check standard process.env (Build tools)
   if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
     return process.env.API_KEY;
   }
   
-  // Check Vite env vars (import.meta.env.VITE_API_KEY)
+  // Priority 2: Check Vite env vars
   try {
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
@@ -37,14 +37,14 @@ export const getSmartApiKey = (): string | undefined => {
        // @ts-ignore
       return import.meta.env.API_KEY;
     }
-  } catch (e) {
-    // Ignore errors if import.meta is not available
-  }
+  } catch (e) {}
 
-  // Check global window object (Last resort fallback)
+  // Priority 3: Check global window object (Runtime injection)
   if (typeof window !== 'undefined' && (window as any).API_KEY) {
     return (window as any).API_KEY;
   }
 
-  return undefined;
+  // Priority 4: Fallback to the provided key
+  // This ensures the app works immediately if env vars fail to propagate
+  return "AIzaSyBwZxqDYvF5QJ_tq1S3829TlSQFncFEF4Q";
 };
