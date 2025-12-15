@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area, ComposedChart } from 'recharts';
-import { Users, Package as PkgIcon, DollarSign, Calendar, Plus, Lock, LogOut, MapPin, Search, Trash2, CheckCircle, Sparkles, Loader2, Image as ImageIcon, Edit, Save, FileJson, Layout, Building2, Globe, Settings, Activity, Compass, Utensils, Briefcase, Database, Filter, Eye, TrendingUp, TrendingDown, MousePointer, Smartphone, Zap, AlertTriangle, Clock, Download, Key, Facebook, Twitter, Instagram, FileText } from 'lucide-react';
+import { Users, Package as PkgIcon, DollarSign, Calendar, Plus, Lock, LogOut, MapPin, Search, Trash2, CheckCircle, Sparkles, Loader2, Image as ImageIcon, Edit, Save, FileJson, Layout, Building2, Globe, Settings, Activity, Compass, Utensils, Briefcase, Database, Filter, Eye, TrendingUp, TrendingDown, MousePointer, Smartphone, Zap, AlertTriangle, Clock, Download, Key, Facebook, Twitter, Instagram, FileText, Server, AlertOctagon } from 'lucide-react';
 import { useCurrency } from '../CurrencyContext';
 import { useGlobal } from '../GlobalContext';
-import { formatDate, getSmartApiKey } from '../utils';
-import { GoogleGenAI } from "@google/genai";
-import { Package, Booking } from '../types';
+import { formatDate, generateAIContent } from '../utils';
+import { Package, Booking, AiSettings, PageSettings } from '../types';
 
 const AdminDashboard: React.FC = () => {
   const { formatPrice, currency } = useCurrency();
@@ -14,7 +13,7 @@ const AdminDashboard: React.FC = () => {
     packages, addPackage, updatePackage, bookings, drivers, 
     deleteDriver, updateDriverStatus, updateBookingStatus,
     companyProfile, updateCompanyProfile, seoSettings, updateSeoSettings,
-    deletePackage
+    deletePackage, aiSettings, updateAiSettings, pageSettings, updatePageSettings
   } = useGlobal();
   
   // Auth State
@@ -29,7 +28,8 @@ const AdminDashboard: React.FC = () => {
   const [currentPasswordInput, setCurrentPasswordInput] = useState('');
 
   // UI State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'packages' | 'enquiries' | 'drivers' | 'profile' | 'seo'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'packages' | 'enquiries' | 'drivers' | 'profile' | 'settings'>('dashboard');
+  const [settingsSubTab, setSettingsSubTab] = useState<'ai' | 'seo' | 'pages' | 'db'>('ai');
   
   // Analytics State
   const [dateRange, setDateRange] = useState('30d');
@@ -67,6 +67,8 @@ const AdminDashboard: React.FC = () => {
   // Profile & SEO Form States
   const [profileForm, setProfileForm] = useState(companyProfile);
   const [seoForm, setSeoForm] = useState(seoSettings);
+  const [aiForm, setAiForm] = useState<AiSettings>(aiSettings);
+  const [pageForm, setPageForm] = useState<PageSettings>(pageSettings);
 
   // Database Config State
   const [dbConfig, setDbConfig] = useState({
@@ -84,6 +86,8 @@ const AdminDashboard: React.FC = () => {
     // Initialize forms with context data
     setProfileForm(companyProfile);
     setSeoForm(seoSettings);
+    setAiForm(aiSettings);
+    setPageForm(pageSettings);
 
     // Load stored DB config
     const storedName = localStorage.getItem('holidaypot_supabase_project_name') || '';
@@ -91,7 +95,7 @@ const AdminDashboard: React.FC = () => {
     const storedKey = localStorage.getItem('holidaypot_supabase_key') || '';
     setDbConfig({ projectName: storedName, url: storedUrl, key: storedKey });
 
-  }, [companyProfile, seoSettings]);
+  }, [companyProfile, seoSettings, aiSettings, pageSettings]);
 
   // Update chart data when bookings change
   useEffect(() => {
@@ -130,40 +134,44 @@ const AdminDashboard: React.FC = () => {
     setChartData(processedData);
   }, [bookings]);
 
-  // --- MOCK DATA FOR ANALYTICS DASHBOARD ---
+  // Mock Data for Analytics Charts
   const trafficTrendData = [
-    { name: '1', sessions: 1200, prev: 1000 }, { name: '5', sessions: 1500, prev: 1100 }, 
-    { name: '10', sessions: 1800, prev: 1400 }, { name: '15', sessions: 2200, prev: 1600 },
-    { name: '20', sessions: 2800, prev: 2000 }, { name: '25', sessions: 2400, prev: 2100 },
-    { name: '30', sessions: 3100, prev: 2200 }
+    { name: 'Mon', sessions: 4000, prev: 2400 },
+    { name: 'Tue', sessions: 3000, prev: 1398 },
+    { name: 'Wed', sessions: 2000, prev: 9800 },
+    { name: 'Thu', sessions: 2780, prev: 3908 },
+    { name: 'Fri', sessions: 1890, prev: 4800 },
+    { name: 'Sat', sessions: 2390, prev: 3800 },
+    { name: 'Sun', sessions: 3490, prev: 4300 },
   ];
 
   const acquisitionData = [
-    { name: 'Organic Search', sessions: 4500, percent: 45, conversion: 2.5 },
-    { name: 'Direct', sessions: 2500, percent: 25, conversion: 3.1 },
-    { name: 'Social', sessions: 2000, percent: 20, conversion: 1.8 },
-    { name: 'Referral', sessions: 1000, percent: 10, conversion: 4.2 }
+    { name: 'Organic Search', percent: 65, sessions: '8,450', conversion: 3.2 },
+    { name: 'Direct', percent: 20, sessions: '2,100', conversion: 4.5 },
+    { name: 'Social Media', percent: 10, sessions: '1,250', conversion: 1.8 },
+    { name: 'Referral', percent: 5, sessions: '650', conversion: 2.1 },
+  ];
+
+  const funnelData = [
+    { name: 'Sessions', value: 12450, fill: '#0EA5E9' },
+    { name: 'View Item', value: 8320, fill: '#38BDF8' },
+    { name: 'Add to Cart', value: 3450, fill: '#7DD3FC' },
+    { name: 'Checkout', value: 1200, fill: '#BAE6FD' },
+    { name: 'Purchase', value: 350, fill: '#F0F9FF' },
+  ];
+
+  const topPagesData = [
+    { title: 'Home Page', url: '/', views: '5,240', time: '1m 20s', bounce: '45%' },
+    { title: 'Kerala Packages', url: '/package/kerala-gods-own-country', views: '2,100', time: '3m 15s', bounce: '32%' },
+    { title: 'Goa Party Trip', url: '/package/goa-beach-party', views: '1,850', time: '2m 45s', bounce: '55%' },
+    { title: 'Rajasthan Royal', url: '/package/rajasthan-royal-tour', views: '1,200', time: '4m 10s', bounce: '28%' },
+    { title: 'Taxi Booking', url: '/taxi', views: '950', time: '1m 05s', bounce: '60%' },
   ];
 
   const deviceData = [
     { name: 'Mobile', value: 65, color: '#0EA5E9' },
-    { name: 'Desktop', value: 30, color: '#8B5CF6' },
-    { name: 'Tablet', value: 5, color: '#F97316' }
-  ];
-
-  const funnelData = [
-    { name: 'Visits', value: 10000, fill: '#0EA5E9' },
-    { name: 'View Item', value: 4500, fill: '#3B82F6' },
-    { name: 'Add to Cart', value: 1200, fill: '#6366F1' },
-    { name: 'Purchase', value: 350, fill: '#8B5CF6' }
-  ];
-
-  const topPagesData = [
-    { url: '/', title: 'Home', views: 5200, time: '1m 30s', bounce: '45%' },
-    { url: '/packages', title: 'Packages', views: 3100, time: '2m 15s', bounce: '30%' },
-    { url: '/ai-planner', title: 'AI Planner', views: 1800, time: '4m 05s', bounce: '20%' },
-    { url: '/package/rajasthan', title: 'Rajasthan Tour', views: 950, time: '3m 10s', bounce: '35%' },
-    { url: '/taxi', title: 'Taxi Booking', views: 800, time: '1m 45s', bounce: '40%' }
+    { name: 'Desktop', value: 30, color: '#10B981' },
+    { name: 'Tablet', value: 5, color: '#F59E0B' },
   ];
 
   const handleLogin = (e: React.FormEvent) => {
@@ -228,6 +236,18 @@ const AdminDashboard: React.FC = () => {
     e.preventDefault();
     updateSeoSettings(seoForm);
     alert('SEO Settings Updated!');
+  };
+
+  const handleAiSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateAiSettings(aiForm);
+    alert('AI Engine Settings Saved. Fallback keys will be used if Primary fails.');
+  };
+
+  const handlePageSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    updatePageSettings(pageForm);
+    alert('Page Configurations Updated!');
   };
 
   const handleDeletePackage = (e: React.MouseEvent, id: string, name: string) => {
@@ -367,11 +387,6 @@ const AdminDashboard: React.FC = () => {
     setIsGenerating(true);
 
     try {
-      const apiKey = getSmartApiKey();
-      if (!apiKey) {
-         throw new Error("Missing API Key. Check Environment Variables.");
-      }
-      const ai = new GoogleGenAI({ apiKey });
       const prompt = `
         Create a detailed JSON object for a travel package.
         Destination: "${newPackage.destination}"
@@ -413,13 +428,8 @@ const AdminDashboard: React.FC = () => {
         Return ONLY raw JSON.
       `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-
-      let jsonStr = response.text;
-      jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+      // Use Robust Utility
+      const jsonStr = await generateAIContent(prompt);
       
       const generated = JSON.parse(jsonStr); 
       
@@ -548,7 +558,7 @@ const AdminDashboard: React.FC = () => {
                  { id: 'enquiries', label: 'Enquiries' },
                  { id: 'drivers', label: 'Drivers' },
                  { id: 'profile', label: 'Company' },
-                 { id: 'seo', label: 'SEO' }
+                 { id: 'settings', label: 'Settings' }
                ].map(tab => (
                  <button 
                     key={tab.id}
@@ -567,7 +577,6 @@ const AdminDashboard: React.FC = () => {
              </div>
           </div>
 
-          {/* ... (Previous tabs remain the same: dashboard, analytics, packages) ... */}
           {activeTab === 'dashboard' && (
             <div className="animate-fade-in">
               {/* KPIs - Clickable */}
@@ -1333,182 +1342,282 @@ const AdminDashboard: React.FC = () => {
                         </form>
                     </div>
                   </div>
-
-                  {/* Right Column: DB Config */}
-                  <div>
-                     <h2 className="text-xl font-bold text-gray-900 mb-6">Database Configuration</h2>
-                     <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-                       <div className="mb-4 p-4 bg-orange-50 border border-orange-100 rounded-lg text-sm text-orange-800">
-                          <strong className="flex items-center gap-2 mb-1"><Database size={16}/> Advanced Settings</strong>
-                          Override the default Supabase connection. Leave empty to use default. Page will reload on save.
-                       </div>
-                       <form onSubmit={handleDbSave} className="space-y-4">
-                          <div>
-                             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Project Name (Optional)</label>
-                             <input 
-                                type="text" 
-                                placeholder="My Production DB"
-                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-orange text-gray-900 font-mono text-sm"
-                                value={dbConfig.projectName}
-                                onChange={(e) => setDbConfig({...dbConfig, projectName: e.target.value})}
-                             />
-                          </div>
-                          <div>
-                             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Supabase URL</label>
-                             <input 
-                                type="text" 
-                                placeholder="https://..."
-                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-orange text-gray-900 font-mono text-sm"
-                                value={dbConfig.url}
-                                onChange={(e) => setDbConfig({...dbConfig, url: e.target.value})}
-                             />
-                          </div>
-                          <div>
-                             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Supabase Anon Key</label>
-                             <input 
-                                type="password" 
-                                placeholder="eyJ..."
-                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-orange text-gray-900 font-mono text-sm"
-                                value={dbConfig.key}
-                                onChange={(e) => setDbConfig({...dbConfig, key: e.target.value})}
-                             />
-                          </div>
-                          <button type="submit" className="w-full bg-brand-orange text-white font-bold py-3 px-8 rounded-xl hover:bg-orange-600 transition-colors shadow-lg">
-                             Save & Connect
-                          </button>
-                       </form>
-                     </div>
-                  </div>
                </div>
             </div>
           )}
 
-          {activeTab === 'seo' && (
-            <div className="animate-fade-in grid md:grid-cols-2 gap-8">
-               <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">Global SEO Settings</h2>
-                  <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-                    <form onSubmit={handleSeoSave} className="space-y-4">
-                       <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Global Site Title</label>
-                        <div className="relative">
-                          <Globe className="absolute left-3 top-3 text-gray-400" size={18}/>
-                          <input 
-                             type="text" 
-                             className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
-                             value={seoForm.title}
-                             onChange={(e) => setSeoForm({...seoForm, title: e.target.value})}
-                          />
+          {activeTab === 'settings' && (
+            <div className="animate-fade-in">
+               <div className="flex flex-col md:flex-row gap-8">
+                  {/* Settings Sidebar */}
+                  <div className="w-full md:w-64 flex-shrink-0">
+                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-8">
+                        <button 
+                           onClick={() => setSettingsSubTab('ai')}
+                           className={`w-full text-left px-6 py-4 flex items-center gap-3 text-sm font-bold border-l-4 transition-colors ${settingsSubTab === 'ai' ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-transparent text-gray-600 hover:bg-gray-50'}`}
+                        >
+                           <Sparkles size={18}/> AI Engine
+                        </button>
+                        <button 
+                           onClick={() => setSettingsSubTab('seo')}
+                           className={`w-full text-left px-6 py-4 flex items-center gap-3 text-sm font-bold border-l-4 transition-colors ${settingsSubTab === 'seo' ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-transparent text-gray-600 hover:bg-gray-50'}`}
+                        >
+                           <Globe size={18}/> SEO & Meta
+                        </button>
+                        <button 
+                           onClick={() => setSettingsSubTab('pages')}
+                           className={`w-full text-left px-6 py-4 flex items-center gap-3 text-sm font-bold border-l-4 transition-colors ${settingsSubTab === 'pages' ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-transparent text-gray-600 hover:bg-gray-50'}`}
+                        >
+                           <AlertOctagon size={18}/> Error Pages
+                        </button>
+                        <button 
+                           onClick={() => setSettingsSubTab('db')}
+                           className={`w-full text-left px-6 py-4 flex items-center gap-3 text-sm font-bold border-l-4 transition-colors ${settingsSubTab === 'db' ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-transparent text-gray-600 hover:bg-gray-50'}`}
+                        >
+                           <Database size={18}/> Database
+                        </button>
+                     </div>
+                  </div>
+
+                  {/* Settings Content */}
+                  <div className="flex-grow">
+                     
+                     {/* AI SETTINGS */}
+                     {settingsSubTab === 'ai' && (
+                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 animate-fade-in">
+                           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><Sparkles className="text-brand-orange"/> AI Engine Configuration</h2>
+                           
+                           <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6">
+                              <h4 className="font-bold text-blue-800 text-sm mb-1 flex items-center gap-2"><Activity size={16}/> High Availability Mode</h4>
+                              <p className="text-xs text-blue-600">
+                                 The system automatically handles "503 Overloaded" errors by retrying requests with exponential backoff. 
+                                 Add multiple API keys below to distribute the load and prevent rate limits.
+                              </p>
+                           </div>
+
+                           <form onSubmit={handleAiSave} className="space-y-6">
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Primary Google API Key</label>
+                                 <input 
+                                    type="password" 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 font-mono text-sm"
+                                    placeholder="AIza..."
+                                    value={aiForm.primaryApiKey}
+                                    onChange={(e) => setAiForm({...aiForm, primaryApiKey: e.target.value})}
+                                 />
+                                 <p className="text-[10px] text-gray-400 mt-1">Leave empty to use Environment Variable (VITE_API_KEY)</p>
+                              </div>
+
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Backup API Keys (One per line)</label>
+                                 <textarea 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 font-mono text-sm h-32 resize-none"
+                                    placeholder="AIza...&#10;AIza..."
+                                    value={aiForm.fallbackApiKeys.join('\n')}
+                                    onChange={(e) => setAiForm({...aiForm, fallbackApiKeys: e.target.value.split('\n')})}
+                                 ></textarea>
+                                 <p className="text-[10px] text-gray-400 mt-1">Used automatically if primary key fails or is overloaded.</p>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-6">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Model Selection</label>
+                                    <select 
+                                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                       value={aiForm.model}
+                                       onChange={(e) => setAiForm({...aiForm, model: e.target.value})}
+                                    >
+                                       <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</option>
+                                       <option value="gemini-1.5-flash">Gemini 1.5 Flash (Legacy)</option>
+                                       <option value="gemini-pro">Gemini Pro</option>
+                                    </select>
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Max Retries</label>
+                                    <input 
+                                       type="number"
+                                       min="1"
+                                       max="10"
+                                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                       value={aiForm.maxRetries}
+                                       onChange={(e) => setAiForm({...aiForm, maxRetries: parseInt(e.target.value)})}
+                                    />
+                                 </div>
+                              </div>
+
+                              <button type="submit" className="bg-brand-blue text-white font-bold py-3 px-8 rounded-xl hover:bg-sky-600 transition-colors shadow-lg">
+                                 Save AI Settings
+                              </button>
+                           </form>
                         </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Meta Description</label>
-                        <textarea 
-                           className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 h-24 resize-none"
-                           value={seoForm.description}
-                           onChange={(e) => setSeoForm({...seoForm, description: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Keywords</label>
-                        <input 
-                           type="text" 
-                           className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
-                           value={seoForm.keywords}
-                           onChange={(e) => setSeoForm({...seoForm, keywords: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                         <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Analytics ID (G-XXXX)</label>
-                         <input 
-                            type="text" 
-                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 font-mono"
-                            value={seoForm.analyticsId}
-                            onChange={(e) => setSeoForm({...seoForm, analyticsId: e.target.value})}
-                         />
-                      </div>
+                     )}
 
-                       {/* Tech SEO Toggles */}
-                      <div className="pt-4 border-t border-gray-100 grid grid-cols-1 gap-3">
-                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Settings size={14}/> Enable Sitemap.xml</span>
-                            <input 
-                               type="checkbox" 
-                               checked={seoForm.sitemapEnabled} 
-                               onChange={e => setSeoForm({...seoForm, sitemapEnabled: e.target.checked})} 
-                               className="accent-brand-blue w-4 h-4"
-                            />
-                         </div>
-                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Settings size={14}/> Enable Robots.txt</span>
-                            <input 
-                               type="checkbox" 
-                               checked={seoForm.robotsTxtEnabled} 
-                               onChange={e => setSeoForm({...seoForm, robotsTxtEnabled: e.target.checked})} 
-                               className="accent-brand-blue w-4 h-4"
-                            />
-                         </div>
-                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Settings size={14}/> Schema.org Markup</span>
-                            <input 
-                               type="checkbox" 
-                               checked={seoForm.schemaMarkupEnabled} 
-                               onChange={e => setSeoForm({...seoForm, schemaMarkupEnabled: e.target.checked})} 
-                               className="accent-brand-blue w-4 h-4"
-                            />
-                         </div>
-                      </div>
+                     {/* SEO SETTINGS */}
+                     {settingsSubTab === 'seo' && (
+                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 animate-fade-in">
+                           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><Globe className="text-green-600"/> Global SEO Configuration</h2>
+                           <form onSubmit={handleSeoSave} className="space-y-4">
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Global Site Title</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                    value={seoForm.title}
+                                    onChange={(e) => setSeoForm({...seoForm, title: e.target.value})}
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Meta Description</label>
+                                 <textarea 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 h-24 resize-none"
+                                    value={seoForm.description}
+                                    onChange={(e) => setSeoForm({...seoForm, description: e.target.value})}
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Keywords</label>
+                                 <input 
+                                    type="text" 
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                    value={seoForm.keywords}
+                                    onChange={(e) => setSeoForm({...seoForm, keywords: e.target.value})}
+                                 />
+                              </div>
+                              
+                              <div className="pt-4 border-t border-gray-100 grid grid-cols-1 gap-3">
+                                 <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Settings size={14}/> Enable Sitemap.xml</span>
+                                    <input type="checkbox" checked={seoForm.sitemapEnabled} onChange={e => setSeoForm({...seoForm, sitemapEnabled: e.target.checked})} className="accent-brand-blue w-4 h-4"/>
+                                 </div>
+                                 <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Settings size={14}/> Enable Robots.txt</span>
+                                    <input type="checkbox" checked={seoForm.robotsTxtEnabled} onChange={e => setSeoForm({...seoForm, robotsTxtEnabled: e.target.checked})} className="accent-brand-blue w-4 h-4"/>
+                                 </div>
+                              </div>
 
-                      <button type="submit" className="w-full bg-brand-green text-white font-bold py-3 px-8 rounded-xl hover:bg-green-600 transition-colors shadow-lg mt-4">
-                         Save SEO Settings
-                      </button>
-                    </form>
-                  </div>
-               </div>
+                              <button type="submit" className="w-full bg-brand-green text-white font-bold py-3 px-8 rounded-xl hover:bg-green-600 transition-colors shadow-lg mt-4">
+                                 Save SEO Settings
+                              </button>
+                           </form>
+                        </div>
+                     )}
 
-               <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">Page Performance Analysis</h2>
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                     <table className="w-full text-left">
-                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold">
-                           <tr>
-                              <th className="p-4">Page</th>
-                              <th className="p-4">Score</th>
-                              <th className="p-4">Status</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                           <tr className="hover:bg-gray-50">
-                              <td className="p-4 text-sm font-bold text-gray-900">/home</td>
-                              <td className="p-4 text-green-600 font-bold">98/100</td>
-                              <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Optimized</span></td>
-                           </tr>
-                           <tr className="hover:bg-gray-50">
-                              <td className="p-4 text-sm font-bold text-gray-900">/packages</td>
-                              <td className="p-4 text-green-600 font-bold">92/100</td>
-                              <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Optimized</span></td>
-                           </tr>
-                            <tr className="hover:bg-gray-50">
-                              <td className="p-4 text-sm font-bold text-gray-900">/package/:id</td>
-                              <td className="p-4 text-yellow-600 font-bold">85/100</td>
-                              <td className="p-4"><span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold">Needs Improv.</span></td>
-                           </tr>
-                            <tr className="hover:bg-gray-50">
-                              <td className="p-4 text-sm font-bold text-gray-900">/taxi</td>
-                              <td className="p-4 text-green-600 font-bold">95/100</td>
-                              <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Optimized</span></td>
-                           </tr>
-                        </tbody>
-                     </table>
-                     <div className="p-4 bg-gray-50 text-xs text-gray-500 flex items-center gap-2">
-                        <Activity size={14}/> Analysis updated just now.
-                     </div>
+                     {/* ERROR PAGES SETTINGS */}
+                     {settingsSubTab === 'pages' && (
+                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 animate-fade-in">
+                           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><AlertOctagon className="text-red-500"/> Error Pages & Maintenance</h2>
+                           <form onSubmit={handlePageSave} className="space-y-6">
+                              
+                              {/* 404 Config */}
+                              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                                 <h3 className="font-bold text-gray-800 mb-3">404 Page Not Found</h3>
+                                 <div className="space-y-3">
+                                    <div>
+                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Headline</label>
+                                       <input 
+                                          type="text" 
+                                          className="w-full p-2 bg-white border border-gray-300 rounded-lg text-sm"
+                                          value={pageForm.error404.title}
+                                          onChange={(e) => setPageForm({...pageForm, error404: {...pageForm.error404, title: e.target.value}})}
+                                       />
+                                    </div>
+                                    <div>
+                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Message</label>
+                                       <textarea 
+                                          className="w-full p-2 bg-white border border-gray-300 rounded-lg text-sm resize-none h-20"
+                                          value={pageForm.error404.message}
+                                          onChange={(e) => setPageForm({...pageForm, error404: {...pageForm.error404, message: e.target.value}})}
+                                       />
+                                    </div>
+                                    <div>
+                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Image URL</label>
+                                       <input 
+                                          type="text" 
+                                          className="w-full p-2 bg-white border border-gray-300 rounded-lg text-sm"
+                                          value={pageForm.error404.image}
+                                          onChange={(e) => setPageForm({...pageForm, error404: {...pageForm.error404, image: e.target.value}})}
+                                       />
+                                    </div>
+                                 </div>
+                              </div>
+
+                              {/* Maintenance Mode */}
+                              <div className="flex items-center justify-between p-4 bg-orange-50 border border-orange-100 rounded-xl">
+                                 <div>
+                                    <h4 className="font-bold text-orange-800 text-sm">Maintenance Mode</h4>
+                                    <p className="text-xs text-orange-600">Show a generic 503 Service Unavailable page to all visitors.</p>
+                                 </div>
+                                 <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                    <input 
+                                       type="checkbox" 
+                                       name="toggle" 
+                                       id="toggle" 
+                                       checked={pageForm.maintenanceMode}
+                                       onChange={(e) => setPageForm({...pageForm, maintenanceMode: e.target.checked})}
+                                       className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-orange-200 checked:right-0 checked:border-brand-orange"
+                                    />
+                                    <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-orange-200 cursor-pointer"></label>
+                                 </div>
+                              </div>
+
+                              <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3 px-8 rounded-xl hover:bg-black transition-colors shadow-lg">
+                                 Save Page Settings
+                              </button>
+                           </form>
+                        </div>
+                     )}
+
+                     {/* DB SETTINGS */}
+                     {settingsSubTab === 'db' && (
+                        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 animate-fade-in">
+                           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><Server className="text-purple-600"/> Database Configuration</h2>
+                           <div className="mb-4 p-4 bg-purple-50 border border-purple-100 rounded-lg text-sm text-purple-800">
+                              <strong className="flex items-center gap-2 mb-1"><Database size={16}/> Advanced Settings</strong>
+                              Override the default Supabase connection. Leave empty to use default. Page will reload on save.
+                           </div>
+                           <form onSubmit={handleDbSave} className="space-y-4">
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Project Name (Optional)</label>
+                                 <input 
+                                    type="text" 
+                                    placeholder="My Production DB"
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 font-mono text-sm"
+                                    value={dbConfig.projectName}
+                                    onChange={(e) => setDbConfig({...dbConfig, projectName: e.target.value})}
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Supabase URL</label>
+                                 <input 
+                                    type="text" 
+                                    placeholder="https://..."
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 font-mono text-sm"
+                                    value={dbConfig.url}
+                                    onChange={(e) => setDbConfig({...dbConfig, url: e.target.value})}
+                                 />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Supabase Anon Key</label>
+                                 <input 
+                                    type="password" 
+                                    placeholder="eyJ..."
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 font-mono text-sm"
+                                    value={dbConfig.key}
+                                    onChange={(e) => setDbConfig({...dbConfig, key: e.target.value})}
+                                 />
+                              </div>
+                              <button type="submit" className="w-full bg-purple-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-purple-700 transition-colors shadow-lg">
+                                 Save & Connect
+                              </button>
+                           </form>
+                        </div>
+                     )}
+
                   </div>
                </div>
             </div>
           )}
 
-          {/* ... (Modals remain the same) ... */}
           {/* New/Edit Package Modal */}
           {isModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -1667,6 +1776,7 @@ const AdminDashboard: React.FC = () => {
                         </div>
                      )}
 
+                     {/* Other form sections remain same */}
                      {modalTab === 'itinerary' && (
                         <div className="animate-fade-in flex flex-col h-[500px]">
                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-2">
@@ -1801,3 +1911,4 @@ const AdminDashboard: React.FC = () => {
 };
 
 export default AdminDashboard;
+    

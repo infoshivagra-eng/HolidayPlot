@@ -163,3 +163,19 @@ export interface SeoSettings {
   schemaMarkupEnabled: boolean;
   analyticsId: string;
 }
+
+export interface AiSettings {
+  primaryApiKey: string;
+  fallbackApiKeys: string[]; // List of fallback keys
+  model: string; // e.g. gemini-2.5-flash
+  maxRetries: number;
+}
+
+export interface PageSettings {
+  error404: {
+    title: string;
+    message: string;
+    image: string;
+  };
+  maintenanceMode: boolean;
+}

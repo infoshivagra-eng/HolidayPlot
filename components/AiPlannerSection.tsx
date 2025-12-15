@@ -1,9 +1,8 @@
 
 import React, { useState } from 'react';
 import { Sparkles, Map, Calendar, Wallet, User, Loader2, ArrowRight, AlertTriangle, FileDown, X, Mail, Phone, MessageSquare } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { useCurrency } from '../CurrencyContext';
-import { getSmartApiKey } from '../utils';
+import { generateAIContent } from '../utils'; // Use the new wrapper
 import { useGlobal } from '../GlobalContext';
 
 interface AiPlannerSectionProps {
@@ -40,13 +39,6 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
     setItinerary('');
 
     try {
-      const apiKey = getSmartApiKey();
-      
-      if (!apiKey) {
-        throw new Error("Missing API Key. Please set API_KEY or VITE_API_KEY in your environment variables.");
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
       const prompt = `Create a detailed ${formData.days}-day travel itinerary for ${formData.destination || 'a surprise destination in India'}, India. 
       Budget: ${formData.budget} (${currency}). 
       Group: ${formData.travelers}. 
@@ -61,16 +53,10 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
       Make it engaging, vibrant, and practical. Include estimated costs in ${currency}. 
       Do not include markdown code blocks (like \`\`\`html), just return the raw HTML content.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-
-      // Clean up potential markdown code blocks if the model includes them despite instructions
-      let text = response.text || '';
-      text = text.replace(/```html/g, '').replace(/```/g, '');
-
+      // Use the robust utility function
+      const text = await generateAIContent(prompt);
       setItinerary(text);
+
     } catch (error: any) {
       console.error("Error generating itinerary:", error);
       const msg = error.message || "Unknown error occurred";
@@ -88,7 +74,7 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
                 <div class="bg-white p-3 rounded-lg border border-red-100 font-mono text-xs text-red-600 break-all">
                    Error: ${msg}
                 </div>
-                ${msg.includes("Key") ? `<p class="text-xs mt-3 text-red-700"><strong>Note for Admin:</strong> Ensure <code>API_KEY</code> or <code>VITE_API_KEY</code> is set in your Netlify/Vercel environment settings.</p>` : ''}
+                <p class="text-xs mt-3 text-gray-500"><strong>Tip:</strong> Try again in a few seconds. If this persists, the servers might be busy.</p>
              </div>
           </div>
         </div>

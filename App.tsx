@@ -108,11 +108,33 @@ const Footer = () => {
   );
 };
 
+// 404 Component
+const NotFound: React.FC = () => {
+  const { pageSettings } = useGlobal();
+  
+  return (
+    <div className="h-screen flex flex-col items-center justify-center p-4 text-center bg-gray-50">
+        <div className="max-w-md w-full">
+           <img 
+             src={pageSettings.error404.image} 
+             alt="404" 
+             className="w-full h-48 object-cover rounded-2xl mb-6 shadow-md"
+           />
+           <h1 className="text-4xl font-bold text-gray-900 mb-2">{pageSettings.error404.title}</h1>
+           <p className="text-gray-600 mb-8">{pageSettings.error404.message}</p>
+           <Link to="/" className="inline-block bg-brand-blue text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-sky-600 transition-colors">
+              Return Home
+           </Link>
+        </div>
+    </div>
+  );
+};
+
 // Shared Layout Component
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
-  const { loading } = useGlobal();
+  const { loading, pageSettings } = useGlobal();
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -136,6 +158,19 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </p>
       </div>
     );
+  }
+
+  // Maintenance Mode Check
+  if (pageSettings.maintenanceMode && !location.pathname.includes('/admin')) {
+     return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4 text-center">
+           <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center mb-6">
+              <Loader2 size={40} className="text-brand-orange animate-spin-slow"/>
+           </div>
+           <h1 className="text-4xl font-bold mb-4">We'll be right back</h1>
+           <p className="text-gray-400 max-w-md">Our site is currently undergoing scheduled maintenance to improve your experience. Please check back soon.</p>
+        </div>
+     );
   }
 
   return (
@@ -251,7 +286,7 @@ const App: React.FC = () => {
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/booking" element={<Booking />} />
               <Route path="/ai-planner" element={<AiPlanner />} />
-              <Route path="*" element={<div className="h-screen flex items-center justify-center">404 - Page Not Found</div>} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
         </HashRouter>

@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Package, Driver, Booking, CompanyProfile, SeoSettings } from './types';
+import { Package, Driver, Booking, CompanyProfile, SeoSettings, AiSettings, PageSettings } from './types';
 import { POPULAR_PACKAGES, MOCK_DRIVERS, MOCK_RIDES } from './constants';
 import { supabase } from './lib/supabaseClient';
 
@@ -10,6 +10,8 @@ interface GlobalContextType {
   bookings: Booking[];
   companyProfile: CompanyProfile;
   seoSettings: SeoSettings;
+  aiSettings: AiSettings;
+  pageSettings: PageSettings;
   addPackage: (pkg: Package) => void;
   updatePackage: (pkg: Package) => void;
   deletePackage: (id: string) => void;
@@ -20,6 +22,8 @@ interface GlobalContextType {
   updateBookingStatus: (id: string, status: Booking['status']) => void;
   updateCompanyProfile: (profile: CompanyProfile) => void;
   updateSeoSettings: (seo: SeoSettings) => void;
+  updateAiSettings: (settings: AiSettings) => void;
+  updatePageSettings: (settings: PageSettings) => void;
   loading: boolean;
 }
 
@@ -54,6 +58,22 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     robotsTxtEnabled: true,
     schemaMarkupEnabled: true,
     analyticsId: 'UA-XXXXX-Y'
+  });
+
+  const [aiSettings, setAiSettings] = useState<AiSettings>({
+    primaryApiKey: '', // Will default to env var in util if empty
+    fallbackApiKeys: [],
+    model: 'gemini-2.5-flash',
+    maxRetries: 3
+  });
+
+  const [pageSettings, setPageSettings] = useState<PageSettings>({
+    error404: {
+      title: 'Page Not Found',
+      message: 'The adventure you are looking for seems to have gone off-map.',
+      image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+    },
+    maintenanceMode: false
   });
 
   // Initial Data Fetch
@@ -140,6 +160,14 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (!seoError && seoData) {
           setSeoSettings(seoData);
         }
+
+        // Load AI Settings from LocalStorage (Simulated DB for this part)
+        const storedAi = localStorage.getItem('holidaypot_ai_settings');
+        if (storedAi) setAiSettings(JSON.parse(storedAi));
+
+        // Load Page Settings from LocalStorage
+        const storedPages = localStorage.getItem('holidaypot_page_settings');
+        if (storedPages) setPageSettings(JSON.parse(storedPages));
 
       } catch (err) {
         console.error("Supabase connection error, falling back to mocks", err);
@@ -235,6 +263,16 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  const updateAiSettings = (settings: AiSettings) => {
+    setAiSettings(settings);
+    localStorage.setItem('holidaypot_ai_settings', JSON.stringify(settings));
+  };
+
+  const updatePageSettings = (settings: PageSettings) => {
+    setPageSettings(settings);
+    localStorage.setItem('holidaypot_page_settings', JSON.stringify(settings));
+  };
+
   return (
     <GlobalContext.Provider value={{
       packages,
@@ -242,6 +280,8 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       bookings,
       companyProfile,
       seoSettings,
+      aiSettings,
+      pageSettings,
       addPackage,
       updatePackage,
       deletePackage,
@@ -252,6 +292,8 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       updateBookingStatus,
       updateCompanyProfile,
       updateSeoSettings,
+      updateAiSettings,
+      updatePageSettings,
       loading
     }}>
       {children}
