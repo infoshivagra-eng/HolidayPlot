@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, Package as PkgIcon, DollarSign, Calendar, Plus, Lock, LogOut, MapPin, Search, Trash2, CheckCircle, Sparkles, Loader2, Image as ImageIcon, Edit, Save, FileJson, Layout, Building2, Globe, Settings, Activity, Compass, Utensils, Briefcase, Database } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area, ComposedChart } from 'recharts';
+import { Users, Package as PkgIcon, DollarSign, Calendar, Plus, Lock, LogOut, MapPin, Search, Trash2, CheckCircle, Sparkles, Loader2, Image as ImageIcon, Edit, Save, FileJson, Layout, Building2, Globe, Settings, Activity, Compass, Utensils, Briefcase, Database, Filter, Eye, TrendingUp, TrendingDown, MousePointer, Smartphone, Zap, AlertTriangle, Clock, Download, Key, Facebook, Twitter, Instagram, FileText } from 'lucide-react';
 import { useCurrency } from '../CurrencyContext';
 import { useGlobal } from '../GlobalContext';
 import { formatDate, getSmartApiKey } from '../utils';
 import { GoogleGenAI } from "@google/genai";
-import { Package } from '../types';
+import { Package, Booking } from '../types';
 
 const AdminDashboard: React.FC = () => {
   const { formatPrice, currency } = useCurrency();
@@ -23,12 +23,24 @@ const AdminDashboard: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
+  // Password Change State
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPasswordInput, setCurrentPasswordInput] = useState('');
+
   // UI State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'packages' | 'enquiries' | 'drivers' | 'profile' | 'seo'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'packages' | 'enquiries' | 'drivers' | 'profile' | 'seo'>('dashboard');
+  
+  // Analytics State
+  const [dateRange, setDateRange] = useState('30d');
   
   // Chart State
   const [chartData, setChartData] = useState<{name: string, revenue: number}[]>([]);
   
+  // Enquiry Filter State
+  const [enquiryFilter, setEnquiryFilter] = useState<{type: string, status: string}>({type: 'All', status: 'All'});
+  const [selectedEnquiry, setSelectedEnquiry] = useState<Booking | null>(null); // For detail view
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -100,7 +112,7 @@ const AdminDashboard: React.FC = () => {
     const revenueByDay = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
     
     bookings.forEach(b => {
-        // Count confirmed or paid bookings
+        // Count confirmed or paid bookings for revenue
         if(b.status === 'Confirmed' || b.paid) {
             const d = new Date(b.date);
             if(!isNaN(d.getTime())) {
@@ -109,8 +121,6 @@ const AdminDashboard: React.FC = () => {
         }
     });
 
-    // Create chart data sorted Mon-Sun (or Sun-Sat)
-    // Let's do Mon-Sun for business week view
     const sortedDays = [1, 2, 3, 4, 5, 6, 0]; // Mon to Sun indices
     const processedData = sortedDays.map(dayIndex => ({
        name: days[dayIndex],
@@ -120,14 +130,52 @@ const AdminDashboard: React.FC = () => {
     setChartData(processedData);
   }, [bookings]);
 
+  // --- MOCK DATA FOR ANALYTICS DASHBOARD ---
+  const trafficTrendData = [
+    { name: '1', sessions: 1200, prev: 1000 }, { name: '5', sessions: 1500, prev: 1100 }, 
+    { name: '10', sessions: 1800, prev: 1400 }, { name: '15', sessions: 2200, prev: 1600 },
+    { name: '20', sessions: 2800, prev: 2000 }, { name: '25', sessions: 2400, prev: 2100 },
+    { name: '30', sessions: 3100, prev: 2200 }
+  ];
+
+  const acquisitionData = [
+    { name: 'Organic Search', sessions: 4500, percent: 45, conversion: 2.5 },
+    { name: 'Direct', sessions: 2500, percent: 25, conversion: 3.1 },
+    { name: 'Social', sessions: 2000, percent: 20, conversion: 1.8 },
+    { name: 'Referral', sessions: 1000, percent: 10, conversion: 4.2 }
+  ];
+
+  const deviceData = [
+    { name: 'Mobile', value: 65, color: '#0EA5E9' },
+    { name: 'Desktop', value: 30, color: '#8B5CF6' },
+    { name: 'Tablet', value: 5, color: '#F97316' }
+  ];
+
+  const funnelData = [
+    { name: 'Visits', value: 10000, fill: '#0EA5E9' },
+    { name: 'View Item', value: 4500, fill: '#3B82F6' },
+    { name: 'Add to Cart', value: 1200, fill: '#6366F1' },
+    { name: 'Purchase', value: 350, fill: '#8B5CF6' }
+  ];
+
+  const topPagesData = [
+    { url: '/', title: 'Home', views: 5200, time: '1m 30s', bounce: '45%' },
+    { url: '/packages', title: 'Packages', views: 3100, time: '2m 15s', bounce: '30%' },
+    { url: '/ai-planner', title: 'AI Planner', views: 1800, time: '4m 05s', bounce: '20%' },
+    { url: '/package/rajasthan', title: 'Rajasthan Tour', views: 950, time: '3m 10s', bounce: '35%' },
+    { url: '/taxi', title: 'Taxi Booking', views: 800, time: '1m 45s', bounce: '40%' }
+  ];
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === 'admin') {
+    const storedPwd = localStorage.getItem('holidayPot_admin_pwd') || 'admin';
+    
+    if (username === 'admin' && password === storedPwd) {
       setIsAuthenticated(true);
       localStorage.setItem('holidayPotAdminAuth', 'true');
       setLoginError('');
     } else {
-      setLoginError('Invalid credentials. Try admin / admin');
+      setLoginError('Invalid credentials. Default is admin / admin');
     }
   };
 
@@ -142,6 +190,28 @@ const AdminDashboard: React.FC = () => {
     e.preventDefault();
     updateCompanyProfile(profileForm);
     alert('Company Profile Updated!');
+  };
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    const storedPwd = localStorage.getItem('holidayPot_admin_pwd') || 'admin';
+    
+    if (currentPasswordInput !== storedPwd) {
+        alert("Current password is incorrect.");
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        alert("New passwords do not match.");
+        return;
+    }
+    if (newPassword.length < 4) {
+        alert("Password must be at least 4 characters.");
+        return;
+    }
+
+    localStorage.setItem('holidayPot_admin_pwd', newPassword);
+    alert("Password updated successfully. Please login again.");
+    handleLogout();
   };
 
   const handleDbSave = (e: React.FormEvent) => {
@@ -161,13 +231,52 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleDeletePackage = (e: React.MouseEvent, id: string, name: string) => {
-     // Explicitly stop propagation to prevent row click or other events
      e.preventDefault();
      e.stopPropagation();
-     
      if(window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
          deletePackage(id);
      }
+  };
+
+  const exportToCSV = () => {
+    if(bookings.length === 0) {
+        alert("No bookings to export.");
+        return;
+    }
+    
+    // Define headers
+    const headers = ["Ref ID", "Date", "Customer Name", "Phone", "Email", "Type", "Item Name", "Status", "Travelers", "Total Amount"];
+    
+    // Convert bookings to CSV rows
+    const csvRows = bookings.map(b => [
+        b.id,
+        new Date(b.date).toLocaleDateString(),
+        `"${b.customerName}"`, // Quote strings to handle commas
+        b.customerPhone,
+        b.customerEmail,
+        b.type,
+        `"${b.itemName}"`,
+        b.status,
+        b.travelers,
+        b.totalAmount
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+        headers.join(','),
+        ...csvRows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create a Blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `enquiries_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const resetForm = () => {
@@ -190,7 +299,6 @@ const AdminDashboard: React.FC = () => {
 
   const openNewPackageModal = () => {
      resetForm();
-     // Initialize defaults for JSONs
      setItineraryJson(JSON.stringify({
         shortDesc: "Short description...",
         longDesc: "Detailed description...",
@@ -225,7 +333,6 @@ const AdminDashboard: React.FC = () => {
         image: pkg.images[0] || ''
     });
 
-    // Distribute data into tabs
     setItineraryJson(JSON.stringify({
         shortDesc: pkg.shortDesc,
         longDesc: pkg.longDesc,
@@ -353,10 +460,9 @@ const AdminDashboard: React.FC = () => {
       rating: originalPackage ? originalPackage.rating : 5.0,
       reviewsCount: originalPackage ? originalPackage.reviewsCount : 0,
       slug: newPackage.name.toLowerCase().replace(/\s+/g, '-'),
-      images: [newPackage.image], // Simplification: Overwrite with cover image
+      images: [newPackage.image], 
       created_at: originalPackage?.created_at || new Date().toISOString(),
       
-      // Merge parsed data
       ...parsedOverview,
       ...parsedGuide,
       ...parsedSmart
@@ -372,6 +478,12 @@ const AdminDashboard: React.FC = () => {
     resetForm();
     setActiveTab('packages');
   };
+
+  const filteredBookings = bookings.filter(b => {
+      const matchType = enquiryFilter.type === 'All' || b.type === enquiryFilter.type;
+      const matchStatus = enquiryFilter.status === 'All' || b.status === enquiryFilter.status;
+      return matchType && matchStatus;
+  });
 
   if (!isAuthenticated) {
     return (
@@ -428,11 +540,12 @@ const AdminDashboard: React.FC = () => {
                <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
                <p className="text-gray-500 text-sm">Welcome back, Admin</p>
              </div>
-             <div className="flex flex-wrap gap-2 md:gap-3 bg-white p-1.5 rounded-xl shadow-sm border border-gray-200">
+             <div className="flex flex-wrap gap-2 md:gap-3 bg-white p-1.5 rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-w-full">
                {[
                  { id: 'dashboard', label: 'Overview' },
+                 { id: 'analytics', label: 'Analytics' },
                  { id: 'packages', label: 'Packages' },
-                 { id: 'enquiries', label: 'Bookings' },
+                 { id: 'enquiries', label: 'Enquiries' },
                  { id: 'drivers', label: 'Drivers' },
                  { id: 'profile', label: 'Company' },
                  { id: 'seo', label: 'SEO' }
@@ -440,7 +553,7 @@ const AdminDashboard: React.FC = () => {
                  <button 
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id ? 'bg-brand-blue text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-blue text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
                   >
                     {tab.label}
                  </button>
@@ -454,11 +567,12 @@ const AdminDashboard: React.FC = () => {
              </div>
           </div>
 
+          {/* ... (Previous tabs remain the same: dashboard, analytics, packages) ... */}
           {activeTab === 'dashboard' && (
             <div className="animate-fade-in">
               {/* KPIs - Clickable */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div onClick={() => setActiveTab('enquiries')} className="cursor-pointer bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div onClick={() => setActiveTab('analytics')} className="cursor-pointer bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-4">
                       <div className="p-3 bg-blue-100 text-brand-blue rounded-lg"><DollarSign size={20}/></div>
                       <span className="text-green-500 text-xs font-bold">+12%</span>
@@ -493,7 +607,7 @@ const AdminDashboard: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 {/* Chart */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-6">Revenue Overview (USD)</h3>
+                    <h3 className="font-bold text-gray-800 mb-6">Revenue Trend (USD)</h3>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={chartData}>
@@ -507,15 +621,14 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Recent Bookings Table */}
+                {/* Recent Activity */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-                    <h3 className="font-bold text-gray-800 mb-6">Recent Activity</h3>
+                    <h3 className="font-bold text-gray-800 mb-6">Recent Enquiries</h3>
                     <table className="w-full text-sm text-left">
                       <thead className="bg-gray-50 text-gray-500">
                           <tr>
                             <th className="p-3 rounded-l-lg">Customer</th>
-                            <th className="p-3">Service</th>
-                            <th className="p-3">Amount</th>
+                            <th className="p-3">Type</th>
                             <th className="p-3 rounded-r-lg">Status</th>
                           </tr>
                       </thead>
@@ -523,8 +636,7 @@ const AdminDashboard: React.FC = () => {
                         {bookings.slice(0, 5).map(b => (
                           <tr key={b.id}>
                             <td className="p-3 text-gray-900 font-medium">{b.customerName}</td>
-                            <td className="p-3 text-gray-500 truncate max-w-[150px]">{b.itemName}</td>
-                            <td className="p-3 font-bold text-gray-900">{formatPrice(b.totalAmount)}</td>
+                            <td className="p-3 text-gray-500">{b.type}</td>
                             <td className="p-3">
                               <span className={`px-2 py-1 rounded text-xs font-bold ${b.status === 'Confirmed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                 {b.status}
@@ -539,8 +651,286 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'analytics' && (
+              <div className="animate-fade-in space-y-8">
+                {/* Header Section */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Performance Overview</h2>
+                    <p className="text-xs text-gray-500">Track user behavior and outcomes</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative">
+                      <select 
+                        className="appearance-none bg-gray-50 border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                        value={dateRange}
+                        onChange={(e) => setDateRange(e.target.value)}
+                      >
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="90d">Last 3 months</option>
+                        <option value="1y">Last Year</option>
+                      </select>
+                      <Calendar size={14} className="absolute right-3 top-3 text-gray-400 pointer-events-none"/>
+                    </div>
+                    <button className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 flex items-center gap-2">
+                       <Filter size={14}/> Filters
+                    </button>
+                    <div className="flex items-center gap-2 ml-2">
+                       <span className="text-xs text-gray-500 font-medium">Compare</span>
+                       <div className="w-10 h-5 bg-gray-200 rounded-full relative cursor-pointer">
+                          <div className="w-4 h-4 bg-white rounded-full absolute top-0.5 left-0.5 shadow-sm"></div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPI Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                      <div className="flex justify-between items-start mb-2">
+                         <div className="text-gray-500 text-sm">Total Sessions</div>
+                         <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                           <TrendingUp size={10}/> 12.5%
+                         </span>
+                      </div>
+                      <div className="text-3xl font-bold text-gray-900">12,450</div>
+                      <div className="text-xs text-gray-400 mt-1">vs 10,890 prev</div>
+                   </div>
+                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                      <div className="flex justify-between items-start mb-2">
+                         <div className="text-gray-500 text-sm">Conversion Rate</div>
+                         <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                           <TrendingDown size={10}/> 1.2%
+                         </span>
+                      </div>
+                      <div className="text-3xl font-bold text-gray-900">2.8%</div>
+                      <div className="text-xs text-gray-400 mt-1">vs 3.0% prev</div>
+                   </div>
+                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                      <div className="flex justify-between items-start mb-2">
+                         <div className="text-gray-500 text-sm">Avg. Engagement</div>
+                         <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                           <TrendingUp size={10}/> 5.4%
+                         </span>
+                      </div>
+                      <div className="text-3xl font-bold text-gray-900">2m 45s</div>
+                      <div className="text-xs text-gray-400 mt-1">vs 2m 30s prev</div>
+                   </div>
+                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                      <div className="flex justify-between items-start mb-2">
+                         <div className="text-gray-500 text-sm">Total Conversions</div>
+                         <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                           <TrendingUp size={10}/> 8.1%
+                         </span>
+                      </div>
+                      <div className="text-3xl font-bold text-gray-900">350</div>
+                      <div className="text-xs text-gray-400 mt-1">Goal Completions</div>
+                   </div>
+                </div>
+
+                {/* Traffic Overview */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                   <div className="flex justify-between items-center mb-6">
+                      <h3 className="font-bold text-gray-800">Traffic Overview</h3>
+                      <div className="flex items-center gap-4 text-sm">
+                         <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-brand-blue"></span> Current Period
+                         </div>
+                         <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-gray-300"></span> Previous Period
+                         </div>
+                      </div>
+                   </div>
+                   <div className="h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={trafficTrendData}>
+                            <defs>
+                              <linearGradient id="colorTraffic" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb"/>
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
+                            <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                            <Area type="monotone" dataKey="sessions" stroke="#0EA5E9" strokeWidth={3} fillOpacity={1} fill="url(#colorTraffic)" />
+                            <Area type="monotone" dataKey="prev" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="4 4" fill="transparent" />
+                          </AreaChart>
+                      </ResponsiveContainer>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                   {/* Acquisition Source */}
+                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                      <h3 className="font-bold text-gray-800 mb-6">Acquisition Channels</h3>
+                      <div className="space-y-4">
+                        {acquisitionData.map((item, i) => (
+                           <div key={i} className="flex items-center gap-4">
+                              <div className="w-24 text-sm font-medium text-gray-600">{item.name}</div>
+                              <div className="flex-1">
+                                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-brand-blue rounded-full" style={{width: `${item.percent}%`}}></div>
+                                 </div>
+                              </div>
+                              <div className="w-16 text-right text-sm font-bold text-gray-900">{item.sessions}</div>
+                              <div className="w-16 text-right text-xs text-gray-500">{item.conversion}% CR</div>
+                           </div>
+                        ))}
+                      </div>
+                   </div>
+
+                   {/* Conversion Funnel */}
+                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                      <h3 className="font-bold text-gray-800 mb-6">Conversion Funnel</h3>
+                      <div className="h-64">
+                         <ResponsiveContainer width="100%" height="100%">
+                            <BarChart layout="vertical" data={funnelData} barCategoryGap="15%">
+                               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
+                               <XAxis type="number" hide />
+                               <YAxis dataKey="name" type="category" width={80} tick={{fontSize: 12}} />
+                               <Tooltip />
+                               <Bar dataKey="value" radius={[0, 4, 4, 0]} label={{position: 'right', fill: '#6b7280', fontSize: 12}}>
+                                  {funnelData.map((entry, index) => (
+                                     <Cell key={`cell-${index}`} fill={entry.fill} />
+                                  ))}
+                               </Bar>
+                            </BarChart>
+                         </ResponsiveContainer>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Top Pages */}
+                    <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                       <h3 className="font-bold text-gray-800 mb-6">Top Pages by Views</h3>
+                       <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm">
+                             <thead className="bg-gray-50 text-gray-500 font-medium">
+                                <tr>
+                                   <th className="p-3 rounded-l-lg">Page Title</th>
+                                   <th className="p-3">Views</th>
+                                   <th className="p-3">Avg Time</th>
+                                   <th className="p-3 rounded-r-lg">Bounce Rate</th>
+                                </tr>
+                             </thead>
+                             <tbody className="divide-y divide-gray-100">
+                                {topPagesData.map((page, i) => (
+                                   <tr key={i} className="hover:bg-gray-50">
+                                      <td className="p-3">
+                                         <div className="font-medium text-gray-900">{page.title}</div>
+                                         <div className="text-xs text-gray-400">{page.url}</div>
+                                      </td>
+                                      <td className="p-3 text-gray-700">{page.views}</td>
+                                      <td className="p-3 text-gray-700">{page.time}</td>
+                                      <td className="p-3">
+                                         <span className={`px-2 py-0.5 rounded text-xs font-bold ${parseInt(page.bounce) > 40 ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                                            {page.bounce}
+                                         </span>
+                                      </td>
+                                   </tr>
+                                ))}
+                             </tbody>
+                          </table>
+                       </div>
+                    </div>
+
+                    {/* Device Breakdown */}
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                       <h3 className="font-bold text-gray-800 mb-6">Audience Devices</h3>
+                       <div className="h-48">
+                          <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                  <Pie
+                                      data={deviceData}
+                                      innerRadius={60}
+                                      outerRadius={80}
+                                      paddingAngle={5}
+                                      dataKey="value"
+                                  >
+                                      {deviceData.map((entry, index) => (
+                                          <Cell key={`cell-${index}`} fill={entry.color} />
+                                      ))}
+                                  </Pie>
+                                  <Tooltip />
+                              </PieChart>
+                          </ResponsiveContainer>
+                       </div>
+                       <div className="flex justify-center gap-6 mt-4">
+                          {deviceData.map((item, i) => (
+                             <div key={i} className="flex flex-col items-center">
+                                <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                                   <span className="w-2 h-2 rounded-full" style={{backgroundColor: item.color}}></span> {item.name}
+                                </div>
+                                <span className="font-bold text-gray-900">{item.value}%</span>
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+                </div>
+
+                {/* Technical & Alerts */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                      <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><Zap size={18} className="text-yellow-500"/> Site Performance</h3>
+                      <div className="space-y-4">
+                         <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div>
+                               <div className="text-sm font-medium text-gray-900">Avg. Load Time</div>
+                               <div className="text-xs text-gray-500">Target: &lt; 2.5s</div>
+                            </div>
+                            <div className="text-right">
+                               <div className="text-lg font-bold text-green-600">1.2s</div>
+                               <div className="text-xs text-green-600 font-bold bg-green-100 px-2 rounded">Fast</div>
+                            </div>
+                         </div>
+                         <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div>
+                               <div className="text-sm font-medium text-gray-900">Core Web Vitals (LCP)</div>
+                               <div className="text-xs text-gray-500">Largest Contentful Paint</div>
+                            </div>
+                            <div className="text-right">
+                               <div className="text-lg font-bold text-orange-500">2.8s</div>
+                               <div className="text-xs text-orange-600 font-bold bg-orange-100 px-2 rounded">Needs Improv</div>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                      <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><AlertTriangle size={18} className="text-red-500"/> System Alerts</h3>
+                      <div className="space-y-3">
+                         <div className="flex gap-3 items-start p-3 bg-red-50 border border-red-100 rounded-lg">
+                            <AlertTriangle size={16} className="text-red-500 mt-0.5 flex-shrink-0"/>
+                            <div>
+                               <div className="text-sm font-bold text-red-700">High Bounce Rate Detected</div>
+                               <p className="text-xs text-red-600 mt-1">Bounce rate on /package/goa-beach-party increased by 15% yesterday.</p>
+                               <div className="text-[10px] text-red-400 mt-1 font-mono">2 hours ago</div>
+                            </div>
+                         </div>
+                         <div className="flex gap-3 items-start p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                            <Clock size={16} className="text-blue-500 mt-0.5 flex-shrink-0"/>
+                            <div>
+                               <div className="text-sm font-bold text-blue-700">Scheduled Maintenance</div>
+                               <p className="text-xs text-blue-600 mt-1">Database optimization scheduled for Sunday 2 AM.</p>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="text-center text-xs text-gray-400 mt-8 pb-4">
+                   <Activity size={12} className="inline mr-1"/> Data updated in real-time. Last refresh: {new Date().toLocaleTimeString()}
+                </div>
+              </div>
+          )}
+
           {activeTab === 'packages' && (
              <div className="animate-fade-in">
+                {/* ... existing package content ... */}
                 <div className="flex justify-between items-center mb-6">
                    <h2 className="text-xl font-bold text-gray-900">Manage Packages</h2>
                    <button 
@@ -605,11 +995,45 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'enquiries' && (
              <div className="animate-fade-in">
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                    <h2 className="text-xl font-bold text-gray-900">Bookings & Enquiries</h2>
-                   <div className="flex gap-2">
-                      <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full flex items-center">Confirmed: {bookings.filter(b => b.status === 'Confirmed').length}</span>
-                      <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full flex items-center">Pending: {bookings.filter(b => b.status === 'Pending').length}</span>
+                   
+                   <div className="flex gap-3 items-center flex-wrap">
+                       {/* Filters */}
+                       <div className="flex gap-2">
+                          <div className="relative">
+                              <Filter size={16} className="absolute left-3 top-3 text-gray-400"/>
+                              <select 
+                                 className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm outline-none"
+                                 value={enquiryFilter.type}
+                                 onChange={e => setEnquiryFilter({...enquiryFilter, type: e.target.value})}
+                              >
+                                 <option value="All">All Types</option>
+                                 <option value="Package">Packages</option>
+                                 <option value="Taxi">Taxi</option>
+                                 <option value="AI Plan">AI Plans</option>
+                              </select>
+                          </div>
+                          <select 
+                             className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm outline-none"
+                             value={enquiryFilter.status}
+                             onChange={e => setEnquiryFilter({...enquiryFilter, status: e.target.value})}
+                          >
+                             <option value="All">All Status</option>
+                             <option value="Confirmed">Confirmed</option>
+                             <option value="Pending">Pending</option>
+                             <option value="Cancelled">Cancelled</option>
+                          </select>
+                       </div>
+                       
+                       {/* Export Button */}
+                       <button 
+                        onClick={exportToCSV}
+                        className="bg-green-50 text-green-600 px-4 py-2 rounded-lg text-sm font-bold border border-green-200 hover:bg-green-100 flex items-center gap-2"
+                        title="Export to CSV (Excel)"
+                       >
+                          <Download size={16}/> Export CSV
+                       </button>
                    </div>
                 </div>
 
@@ -620,15 +1044,14 @@ const AdminDashboard: React.FC = () => {
                             <th className="p-4">Ref ID</th>
                             <th className="p-4">Date</th>
                             <th className="p-4">Customer</th>
-                            <th className="p-4">Item Details</th>
+                            <th className="p-4">Service Details</th>
                             <th className="p-4">Travel Date</th>
-                            <th className="p-4">Total</th>
                             <th className="p-4">Status</th>
                             <th className="p-4">Action</th>
                          </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                         {bookings.map((booking) => (
+                         {filteredBookings.map((booking) => (
                             <tr key={booking.id} className="hover:bg-gray-50">
                                <td className="p-4 font-mono text-xs text-gray-500">{booking.id}</td>
                                <td className="p-4 text-sm text-gray-700">{formatDate(booking.date)}</td>
@@ -639,12 +1062,20 @@ const AdminDashboard: React.FC = () => {
                                </td>
                                <td className="p-4">
                                   <div className="text-sm font-medium text-gray-900 max-w-[200px] truncate" title={booking.itemName}>{booking.itemName}</div>
-                                  <div className="text-xs text-gray-500 uppercase">{booking.type} • {booking.travelers} Pax</div>
+                                  <div className="text-xs flex items-center gap-2 mt-1">
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                                          booking.type === 'AI Plan' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                                          booking.type === 'Taxi' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                          'bg-blue-50 text-blue-700 border-blue-100'
+                                      }`}>
+                                          {booking.type}
+                                      </span>
+                                      <span className="text-gray-500">{booking.travelers} Pax</span>
+                                  </div>
                                </td>
                                <td className="p-4 text-sm font-bold text-brand-blue">
                                   {booking.travelDate ? formatDate(booking.travelDate) : '-'}
                                </td>
-                               <td className="p-4 font-bold text-gray-900 text-sm">{formatPrice(booking.totalAmount)}</td>
                                <td className="p-4">
                                   <span className={`px-2 py-1 rounded text-xs font-bold ${booking.status === 'Confirmed' ? 'bg-green-100 text-green-700' : booking.status === 'Pending' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
                                      {booking.status}
@@ -658,16 +1089,19 @@ const AdminDashboard: React.FC = () => {
                                         <CheckCircle size={16}/>
                                      </button>
                                   )}
-                                  <button className="bg-gray-100 text-gray-500 p-1.5 rounded hover:bg-gray-200 transition-colors" title="View Details">
-                                     <Search size={16}/>
+                                  <button 
+                                    onClick={() => setSelectedEnquiry(booking)}
+                                    className="bg-gray-100 text-gray-500 p-1.5 rounded hover:bg-gray-200 transition-colors" title="View Details"
+                                   >
+                                     <Eye size={16}/>
                                   </button>
                                </td>
                             </tr>
                          ))}
                       </tbody>
                    </table>
-                   {bookings.length === 0 && (
-                      <div className="p-8 text-center text-gray-500">No bookings yet.</div>
+                   {filteredBookings.length === 0 && (
+                      <div className="p-8 text-center text-gray-500">No bookings match your filters.</div>
                    )}
                 </div>
              </div>
@@ -675,6 +1109,7 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'drivers' && (
              <div className="animate-fade-in">
+                {/* ... existing drivers content ... */}
                 <div className="flex justify-between items-center mb-6">
                    <h2 className="text-xl font-bold text-gray-900">Manage Drivers</h2>
                 </div>
@@ -727,9 +1162,10 @@ const AdminDashboard: React.FC = () => {
           {activeTab === 'profile' && (
             <div className="animate-fade-in">
                <div className="grid md:grid-cols-2 gap-8">
+                  {/* Company Profile Section */}
                   <div>
                     <h2 className="text-xl font-bold text-gray-900 mb-6">Company Profile</h2>
-                    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 mb-8">
                       <form onSubmit={handleProfileSave} className="space-y-4">
                         <div>
                           <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Company Name</label>
@@ -751,6 +1187,32 @@ const AdminDashboard: React.FC = () => {
                               value={profileForm.address}
                               onChange={(e) => setProfileForm({...profileForm, address: e.target.value})}
                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Website URL</label>
+                           <div className="relative">
+                             <Globe className="absolute left-3 top-3 text-gray-400" size={18}/>
+                             <input 
+                                 type="url" 
+                                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                 value={profileForm.website || ''}
+                                 placeholder="https://holidaypot.com"
+                                 onChange={(e) => setProfileForm({...profileForm, website: e.target.value})}
+                             />
+                           </div>
+                        </div>
+                        <div>
+                           <label className="block text-xs font-bold text-gray-700 uppercase mb-1">GST Number</label>
+                           <div className="relative">
+                             <FileText className="absolute left-3 top-3 text-gray-400" size={18}/>
+                             <input 
+                                 type="text" 
+                                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900"
+                                 value={profileForm.gstNumber || ''}
+                                 placeholder="29ABCDE1234F1Z5"
+                                 onChange={(e) => setProfileForm({...profileForm, gstNumber: e.target.value})}
+                             />
+                           </div>
                         </div>
                         <div>
                            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Home Page Banner Image (URL)</label>
@@ -786,20 +1248,93 @@ const AdminDashboard: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Social Media Links</label>
-                          <div className="grid grid-cols-3 gap-4">
-                              <input placeholder="Facebook" value={profileForm.facebook} onChange={e => setProfileForm({...profileForm, facebook: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
-                              <input placeholder="Twitter" value={profileForm.twitter} onChange={e => setProfileForm({...profileForm, twitter: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
-                              <input placeholder="Instagram" value={profileForm.instagram} onChange={e => setProfileForm({...profileForm, instagram: e.target.value})} className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs" />
+                          <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Social Media Links</label>
+                          <div className="space-y-3">
+                              <div className="relative">
+                                  <Facebook className="absolute left-3 top-3 text-blue-600" size={18}/>
+                                  <input 
+                                    placeholder="Facebook URL" 
+                                    value={profileForm.facebook} 
+                                    onChange={e => setProfileForm({...profileForm, facebook: e.target.value})} 
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 text-sm" 
+                                  />
+                              </div>
+                              <div className="relative">
+                                  <Twitter className="absolute left-3 top-3 text-sky-400" size={18}/>
+                                  <input 
+                                    placeholder="Twitter / X URL" 
+                                    value={profileForm.twitter} 
+                                    onChange={e => setProfileForm({...profileForm, twitter: e.target.value})} 
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 text-sm" 
+                                  />
+                              </div>
+                              <div className="relative">
+                                  <Instagram className="absolute left-3 top-3 text-pink-500" size={18}/>
+                                  <input 
+                                    placeholder="Instagram URL" 
+                                    value={profileForm.instagram} 
+                                    onChange={e => setProfileForm({...profileForm, instagram: e.target.value})} 
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-900 text-sm" 
+                                  />
+                              </div>
                           </div>
                         </div>
-                        <button type="submit" className="bg-brand-blue text-white font-bold py-3 px-8 rounded-xl hover:bg-sky-600 transition-colors shadow-lg">
+                        <button type="submit" className="bg-brand-blue text-white font-bold py-3 px-8 rounded-xl hover:bg-sky-600 transition-colors shadow-lg w-full">
                             Save Profile
                         </button>
                       </form>
                     </div>
+
+                    {/* Admin Security Section */}
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Admin Security</h2>
+                    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+                        <form onSubmit={handleChangePassword} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Current Password</label>
+                                <div className="relative">
+                                    <Key className="absolute left-3 top-3 text-gray-400" size={18}/>
+                                    <input 
+                                        type="password" 
+                                        required
+                                        placeholder="••••••"
+                                        className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 text-gray-900"
+                                        value={currentPasswordInput}
+                                        onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">New Password</label>
+                                    <input 
+                                        type="password" 
+                                        required
+                                        placeholder="New pass"
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 text-gray-900"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Confirm New</label>
+                                    <input 
+                                        type="password" 
+                                        required
+                                        placeholder="Confirm"
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 text-gray-900"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <button type="submit" className="w-full bg-red-500 text-white font-bold py-3 px-8 rounded-xl hover:bg-red-600 transition-colors shadow-lg">
+                                Change Password
+                            </button>
+                        </form>
+                    </div>
                   </div>
 
+                  {/* Right Column: DB Config */}
                   <div>
                      <h2 className="text-xl font-bold text-gray-900 mb-6">Database Configuration</h2>
                      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
@@ -973,10 +1508,12 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {/* ... (Modals remain the same) ... */}
           {/* New/Edit Package Modal */}
           {isModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-6 animate-fade-in max-h-[95vh] overflow-y-auto flex flex-col">
+                  {/* ... Modal content ... */}
                   <div className="flex justify-between items-center mb-6">
                      <h3 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Package' : 'Add New Package'}</h3>
                      <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -1013,7 +1550,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   
                   <form onSubmit={handleSavePackage} className="space-y-4 flex-grow flex flex-col">
-                     
+                     {/* ... Form fields based on tab (same as before) ... */}
                      {modalTab === 'basic' && (
                         <div className="space-y-4 animate-fade-in">
                            <div>
@@ -1197,6 +1734,66 @@ const AdminDashboard: React.FC = () => {
                </div>
             </div>
           )}
+
+           {/* Enquiry Detail Modal (Same as before) */}
+           {selectedEnquiry && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+               <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative">
+                  <button onClick={() => setSelectedEnquiry(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                     <Plus size={24} className="rotate-45"/>
+                  </button>
+                  
+                  <div className="mb-6 border-b border-gray-100 pb-4">
+                     <span className={`px-2 py-1 rounded text-xs font-bold ${
+                         selectedEnquiry.type === 'AI Plan' ? 'bg-purple-100 text-purple-700' :
+                         selectedEnquiry.type === 'Taxi' ? 'bg-orange-100 text-orange-700' :
+                         'bg-blue-100 text-blue-700'
+                     }`}>
+                        {selectedEnquiry.type} Enquiry
+                     </span>
+                     <h3 className="text-xl font-bold text-gray-900 mt-2">{selectedEnquiry.itemName}</h3>
+                     <p className="text-sm text-gray-500">Ref: {selectedEnquiry.id}</p>
+                  </div>
+
+                  <div className="space-y-4 mb-6">
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="text-xs font-bold text-gray-500 uppercase">Customer</label>
+                           <p className="font-semibold text-gray-900">{selectedEnquiry.customerName}</p>
+                           <p className="text-sm text-gray-500">{selectedEnquiry.customerPhone}</p>
+                           <p className="text-sm text-gray-500">{selectedEnquiry.customerEmail}</p>
+                        </div>
+                        <div>
+                           <label className="text-xs font-bold text-gray-500 uppercase">Travel Details</label>
+                           <p className="font-semibold text-gray-900">
+                              {selectedEnquiry.travelDate ? formatDate(selectedEnquiry.travelDate) : 'Flexible'}
+                           </p>
+                           <p className="text-sm text-gray-500">{selectedEnquiry.travelers} Travelers</p>
+                        </div>
+                     </div>
+                     
+                     {selectedEnquiry.message && (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                           <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Customer Message</label>
+                           <p className="text-sm text-gray-800 italic">"{selectedEnquiry.message}"</p>
+                        </div>
+                     )}
+                  </div>
+
+                  <div className="flex gap-3">
+                     <button 
+                        onClick={() => setSelectedEnquiry(null)}
+                        className="flex-1 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors"
+                     >
+                        Close
+                     </button>
+                     <a href={`tel:${selectedEnquiry.customerPhone}`} className="flex-1 bg-brand-blue text-white font-bold py-3 rounded-xl hover:bg-sky-600 transition-colors shadow-lg flex items-center justify-center gap-2">
+                        Call Customer
+                     </a>
+                  </div>
+               </div>
+            </div>
+           )}
 
        </div>
     </div>

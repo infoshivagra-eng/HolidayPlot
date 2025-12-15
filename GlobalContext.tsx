@@ -36,8 +36,10 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     address: 'MG Road, Bengaluru, Karnataka, India',
     phone: '+91 98765 43210',
     email: 'hello@holidaypot.in',
+    website: 'https://holidaypot.com',
     logo: '',
     heroImage: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80',
+    gstNumber: '29ABCDE1234F1Z5',
     facebook: '#',
     twitter: '#',
     instagram: '#'

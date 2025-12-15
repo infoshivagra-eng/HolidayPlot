@@ -122,18 +122,19 @@ export interface RideRequest {
 export interface Booking {
   id: string;
   userId: string;
-  itemId: string; // Package ID or Ride ID
+  itemId: string; // Package ID, Ride ID, or AI Plan ID
   itemName: string; // Store name for display
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  type: 'Package' | 'Taxi';
+  type: 'Package' | 'Taxi' | 'AI Plan';
   date: string; // Booking creation date
   travelDate?: string; // Date of travel
   status: 'Confirmed' | 'Pending' | 'Cancelled';
   totalAmount: number;
   paid: boolean;
   travelers: number;
+  message?: string; // User message
 }
 
 // Admin & System Types
@@ -142,8 +143,10 @@ export interface CompanyProfile {
   address: string;
   phone: string;
   email: string;
+  website?: string;
   logo: string;
   heroImage?: string; // New field for Home Page Banner
+  gstNumber?: string; // Added GST Number
   facebook: string;
   twitter: string;
   instagram: string;

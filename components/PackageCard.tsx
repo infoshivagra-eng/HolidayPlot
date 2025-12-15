@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Clock, Star, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, Star, Users, Share2, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Package } from '../types';
 import { useCurrency } from '../CurrencyContext';
@@ -11,6 +11,7 @@ interface PackageCardProps {
 
 const PackageCard: React.FC<PackageCardProps> = ({ pkg }) => {
   const { formatPrice } = useCurrency();
+  const [copied, setCopied] = useState(false);
 
   // Calculate if package is new (within last 7 days)
   const isNew = React.useMemo(() => {
@@ -21,6 +22,28 @@ const PackageCard: React.FC<PackageCardProps> = ({ pkg }) => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
     return diffDays <= 7;
   }, [pkg.created_at]);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/#/package/${pkg.id}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: pkg.name,
+          text: `Check out this trip: ${pkg.name}`,
+          url: url,
+        });
+      } catch (err) {
+        console.log("Share skipped");
+      }
+    } else {
+      navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full relative">
@@ -47,6 +70,15 @@ const PackageCard: React.FC<PackageCardProps> = ({ pkg }) => {
              </div>
            )}
         </div>
+
+        {/* Share Button Overlay */}
+        <button 
+          onClick={handleShare}
+          className="absolute bottom-3 right-3 bg-white/90 backdrop-blur p-2 rounded-full text-gray-700 hover:text-brand-blue hover:scale-110 transition-all shadow-md z-10"
+          title="Share Package"
+        >
+          {copied ? <Check size={16} className="text-green-600"/> : <Share2 size={16}/>}
+        </button>
       </div>
       
       <div className="p-5 flex flex-col flex-grow">

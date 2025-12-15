@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { HashRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
-import { Menu, X, Facebook, Twitter, Instagram, MapPin, Phone, Mail, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
+import { Menu, X, Facebook, Twitter, Instagram, MapPin, Phone, Mail, Sparkles, RefreshCw, Loader2, FileText } from 'lucide-react';
 import Home from './pages/Home';
 import PackageList from './pages/PackageList';
 import PackageDetail from './pages/PackageDetail';
@@ -46,6 +46,11 @@ const Footer = () => {
               <p className="text-gray-400 text-sm leading-relaxed">
                 Your gateway to incredible Indian adventures. We craft premium travel experiences and provide reliable transport solutions.
               </p>
+              {companyProfile.gstNumber && (
+                <p className="text-gray-500 text-xs flex items-center gap-1">
+                  <FileText size={12}/> GST: {companyProfile.gstNumber}
+                </p>
+              )}
               <div className="flex space-x-4 pt-2">
                 <a href={companyProfile.facebook} className="text-gray-400 hover:text-brand-blue transition-colors"><Facebook size={20} /></a>
                 <a href={companyProfile.twitter} className="text-gray-400 hover:text-brand-blue transition-colors"><Twitter size={20} /></a>

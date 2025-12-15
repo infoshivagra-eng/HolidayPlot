@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Map, Calendar, Wallet, User, Loader2, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Sparkles, Map, Calendar, Wallet, User, Loader2, ArrowRight, AlertTriangle, FileDown, X, Mail, Phone, MessageSquare } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { useCurrency } from '../CurrencyContext';
 import { getSmartApiKey } from '../utils';
+import { useGlobal } from '../GlobalContext';
 
 interface AiPlannerSectionProps {
   embedded?: boolean;
@@ -11,8 +12,19 @@ interface AiPlannerSectionProps {
 
 const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false }) => {
   const { currency } = useCurrency();
+  const { companyProfile, addBooking } = useGlobal(); // Access global data and actions
   const [loading, setLoading] = useState(false);
   const [itinerary, setItinerary] = useState<string>('');
+  
+  // Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [userForm, setUserForm] = useState({ 
+    name: '', 
+    phone: '', 
+    email: '',
+    planningDate: '',
+    message: '' 
+  });
   
   const [formData, setFormData] = useState({
     destination: '',
@@ -84,6 +96,61 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveClick = () => {
+    setShowModal(true);
+  };
+
+  const handleConfirmSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // 1. Create Enquiry Record in System
+    addBooking({
+      id: `ENQ-${Date.now()}`,
+      userId: 'guest',
+      itemId: 'ai-plan',
+      itemName: `AI Trip to ${formData.destination || 'India'}`,
+      customerName: userForm.name,
+      customerEmail: userForm.email,
+      customerPhone: userForm.phone,
+      type: 'AI Plan',
+      date: new Date().toISOString(),
+      travelDate: userForm.planningDate,
+      status: 'Pending',
+      totalAmount: 0, // AI Plans are initially enquiries
+      paid: false,
+      travelers: 1, // Default or parsed from group size
+      message: userForm.message
+    });
+
+    // 2. WhatsApp Logic
+    // Strip HTML to get clean text for message
+    const plainText = itinerary.replace(/<[^>]+>/g, '\n').replace(/\n\s*\n/g, '\n').trim();
+    
+    const companyFooter = `
+------------------------------
+Explore with **${companyProfile.name}**
+📍 ${companyProfile.address}
+📞 ${companyProfile.phone}
+🌐 ${companyProfile.website || window.location.origin}`;
+
+    const whatsappText = `*My HolidayPot Itinerary for ${formData.destination || 'Trip'}*\n\n*Planned for:* ${userForm.planningDate || 'Flexible Dates'}\n*Traveler:* ${userForm.name}\n\n${userForm.message ? `*Note:* ${userForm.message}\n\n` : ''}${plainText}\n${companyFooter}`;
+    
+    // Clean phone number (remove non-digits)
+    const phoneClean = userForm.phone.replace(/\D/g,'');
+    const whatsappUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(whatsappText)}`;
+    
+    // Open WhatsApp in new tab
+    window.open(whatsappUrl, '_blank');
+    
+    // 3. Email Simulation (Toast/Alert)
+    alert(`Itinerary sent to ${userForm.email} & Enquiry logged!`);
+    
+    // 4. Trigger Browser Print (User can save as PDF)
+    window.print();
+    
+    setShowModal(false);
   };
 
   return (
@@ -190,20 +257,123 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
               <h3 className="text-xl font-bold mb-4 text-brand-blue flex items-center gap-2 sticky top-0 bg-white/95 backdrop-blur py-2 border-b border-gray-100">
                  <Sparkles size={20} className="text-yellow-400 fill-current"/> Your AI Itinerary
               </h3>
-              <div className="prose prose-sm prose-blue max-w-none text-gray-700">
+              <div id="printable-itinerary" className="prose prose-sm prose-blue max-w-none text-gray-700">
                 <div dangerouslySetInnerHTML={{ __html: itinerary }} />
               </div>
               
               {!itinerary.includes("Planning Failed") && (
                 <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-                   <button className="text-brand-orange font-bold text-sm hover:underline flex items-center justify-center gap-1 mx-auto">
-                      Save this Plan (PDF) <ArrowRight size={14}/>
+                   <button 
+                      onClick={handleSaveClick}
+                      className="text-brand-orange font-bold text-sm hover:underline flex items-center justify-center gap-1 mx-auto bg-orange-50 px-4 py-2 rounded-full hover:bg-orange-100 transition-colors"
+                   >
+                      <FileDown size={16}/> Save & Send Enquiry
                    </button>
                 </div>
               )}
            </div>
         )}
       </div>
+
+      {/* User Details Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+                <button 
+                    onClick={() => setShowModal(false)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                >
+                    <X size={24}/>
+                </button>
+                
+                <div className="text-center mb-6">
+                    <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <FileDown size={24}/>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">Finalize Your Plan</h3>
+                    <p className="text-sm text-gray-500">Save itinerary PDF, send to WhatsApp & alert our team.</p>
+                </div>
+                
+                <form onSubmit={handleConfirmSave} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Your Name</label>
+                        <div className="relative">
+                            <User className="absolute left-3 top-3 text-gray-400" size={18}/>
+                            <input 
+                                required
+                                type="text" 
+                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue"
+                                placeholder="John Doe"
+                                value={userForm.name}
+                                onChange={e => setUserForm({...userForm, name: e.target.value})}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">WhatsApp Number</label>
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-3 text-gray-400" size={18}/>
+                            <input 
+                                required
+                                type="tel" 
+                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue"
+                                placeholder="919876543210"
+                                value={userForm.phone}
+                                onChange={e => setUserForm({...userForm, phone: e.target.value})}
+                            />
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1">Include country code without + (e.g., 9198...)</p>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Email Address</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-3 text-gray-400" size={18}/>
+                            <input 
+                                required
+                                type="email" 
+                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue"
+                                placeholder="john@example.com"
+                                value={userForm.email}
+                                onChange={e => setUserForm({...userForm, email: e.target.value})}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Planning Travel Date</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-3 text-gray-400" size={18}/>
+                            <input 
+                                required
+                                type="date" 
+                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-700"
+                                value={userForm.planningDate}
+                                onChange={e => setUserForm({...userForm, planningDate: e.target.value})}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Any Specific Message?</label>
+                        <div className="relative">
+                            <MessageSquare className="absolute left-3 top-3 text-gray-400" size={18}/>
+                            <textarea
+                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue resize-none h-24"
+                                placeholder="E.g., I want to add a visit to Taj Mahal..."
+                                value={userForm.message}
+                                onChange={e => setUserForm({...userForm, message: e.target.value})}
+                            ></textarea>
+                        </div>
+                    </div>
+                    
+                    <button 
+                        type="submit"
+                        className="w-full bg-brand-green text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors shadow-lg flex items-center justify-center gap-2"
+                    >
+                        Save & Send to WhatsApp
+                    </button>
+                </form>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

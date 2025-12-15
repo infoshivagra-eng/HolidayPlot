@@ -22,7 +22,7 @@ const Home: React.FC = () => {
   return (
     <div className="space-y-0">
       {/* Hero Section */}
-      <section className="relative h-[90vh] min-h-[700px] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[85vh] min-h-[600px] flex items-center justify-center overflow-hidden">
         {/* Background */}
         <div className="absolute inset-0 z-0">
           <img
@@ -30,49 +30,52 @@ const Home: React.FC = () => {
             alt="India Travel"
             className="w-full h-full object-cover transition-all duration-700"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-brand-dark/90"></div>
+          <div className="absolute inset-0 bg-black/40"></div>
         </div>
 
-        {/* Content */}
-        <div className="relative z-10 container mx-auto px-4 grid lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-7 text-center lg:text-left">
-            <div className="inline-block bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-1 mb-6">
+        {/* Content - Centered */}
+        <div className="relative z-10 container mx-auto px-4 text-center max-w-4xl">
+            <div className="inline-block bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-1 mb-6 animate-fade-in">
                <span className="text-brand-orange font-bold text-sm tracking-wide flex items-center gap-2">
                  <Sparkles size={14} className="fill-current"/> #1 Travel Planner for India
                </span>
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-lg">
               Discover <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-yellow-300">Incredible</span> <br/>
               India's Soul
             </h1>
-            <p className="text-lg md:text-xl text-gray-200 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-              From the royal forts of Rajasthan to the serene backwaters of Kerala. We craft experiences, not just tours.
+            <p className="text-lg md:text-2xl text-gray-200 mb-10 leading-relaxed drop-shadow-md">
+              From the royal forts of Rajasthan to the serene backwaters of Kerala.<br/>We craft experiences, not just tours.
             </p>
             
-            {/* Search Box - simplified */}
-            <div className="bg-white/10 backdrop-blur-lg p-2 rounded-2xl inline-block border border-white/20">
+            <div className="flex justify-center">
                <Link to="/packages" className="bg-brand-blue hover:bg-sky-500 text-white text-lg font-bold py-4 px-10 rounded-xl transition-all shadow-lg hover:shadow-sky-500/50 flex items-center gap-3">
                   Explore Packages <ArrowRight size={20}/>
                </Link>
             </div>
-          </div>
-
-          {/* AI Planner Embedded Widget */}
-          <div className="lg:col-span-5">
-             <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-2xl border border-white/50 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-blue to-brand-green"></div>
-                <div className="mb-4">
-                   <h3 className="text-2xl font-bold text-gray-900">AI Trip Planner</h3>
-                   <p className="text-sm text-gray-500">Get a personalized itinerary in seconds.</p>
-                </div>
-                <AiPlannerSection embedded={true} />
-             </div>
-          </div>
         </div>
       </section>
 
+      {/* AI Planner Section - Shifted Here (Floating Overlap Style) */}
+      <section className="relative -mt-24 z-20 px-4 mb-20">
+         <div className="max-w-6xl mx-auto">
+            <div className="bg-white rounded-3xl shadow-2xl p-2 md:p-4 border border-gray-100">
+               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 md:p-12">
+                  <div className="text-center mb-10">
+                     <div className="inline-flex items-center gap-2 bg-white px-4 py-1.5 rounded-full shadow-sm text-brand-blue font-bold text-xs uppercase tracking-wider mb-3">
+                        <Sparkles size={14} /> AI Powered
+                     </div>
+                     <h2 className="text-3xl font-bold text-gray-900 mb-2">Not sure where to go?</h2>
+                     <p className="text-gray-600">Let our intelligent planner craft your perfect Indian itinerary in seconds.</p>
+                  </div>
+                  <AiPlannerSection embedded={true} />
+               </div>
+            </div>
+         </div>
+      </section>
+
       {/* Popular Packages */}
-      <section className="py-24 bg-brand-light">
+      <section className="py-12 bg-brand-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-end mb-12">
             <div>
