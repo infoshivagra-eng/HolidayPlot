@@ -29,6 +29,7 @@ export interface FoodItem {
 export interface SafetyTip {
   title: string;
   description: string;
+  image?: string;
 }
 
 export interface VisaInfo {
@@ -150,6 +151,7 @@ export interface CompanyProfile {
   facebook: string;
   twitter: string;
   instagram: string;
+  customContactFormEmbed?: string; // Support for Google Forms/Typeform embedding
 }
 
 export interface SeoSettings {
@@ -246,6 +248,19 @@ export interface FaqItem {
   answer: string;
 }
 
+export interface WeatherData {
+  month: string;
+  tempHigh: string;
+  tempLow: string;
+  rain: string; // e.g., "Low", "High", "Moderate"
+}
+
+export interface FestivalData {
+  name: string;
+  month: string;
+  description: string;
+}
+
 export interface BlogPost {
   id: string;
   title: string;
@@ -264,4 +279,52 @@ export interface BlogPost {
   // Rich Content
   faq?: FaqItem[];
   gallery?: string[]; // URLs
+  
+  // New Rich Sections
+  topActivities?: string[];
+  weatherData?: WeatherData[];
+  festivals?: FestivalData[];
+  adventurePairs?: (string | any)[]; // Relaxed to allow objects for now
+  bestTimeDescription?: string;
+  relatedPackageId?: string; // Link to a booking package
+}
+
+// --- SAAS TYPES (SUPER ADMIN) ---
+export interface Tenant {
+  id: string;
+  business_name: string;
+  admin_email: string;
+  admin_password?: string;
+  status: 'active' | 'suspended';
+  plan_id: 'basic' | 'pro' | 'enterprise';
+  db_url?: string;
+  db_key?: string;
+  ai_key?: string;
+  created_at?: string;
+}
+
+export interface SaaSPlan {
+  id: string;
+  name: string;
+  price: number;
+  features: string[];
+  isPopular?: boolean;
+}
+
+export interface SaaSInvoice {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  amount: number;
+  date: string;
+  status: 'Paid' | 'Pending' | 'Overdue';
+  planName: string;
+}
+
+export interface SaaSAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  status: 'Published' | 'Draft';
 }

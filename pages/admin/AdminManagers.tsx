@@ -26,7 +26,6 @@ const AdminManagers: React.FC = () => {
     { id: 'manage_drivers', label: 'Manage Drivers' },
     { id: 'manage_settings', label: 'System Settings' },
     { id: 'view_analytics', label: 'View Analytics' },
-    { id: 'manage_team', label: 'Manage Team (Super)' },
   ];
 
   const resetForm = () => {
@@ -102,7 +101,7 @@ const AdminManagers: React.FC = () => {
                          <p className="text-xs text-gray-500">@{manager.username}</p>
                       </div>
                    </div>
-                   <span className={`px-2 py-1 rounded-full text-xs font-bold ${manager.role === 'Super Admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-50 text-brand-blue'}`}>
+                   <span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-50 text-brand-blue">
                       {manager.role}
                    </span>
                 </div>
@@ -167,18 +166,6 @@ const AdminManagers: React.FC = () => {
                  </div>
 
                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Role</label>
-                    <div className="flex gap-4">
-                       <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="role" checked={formData.role === 'Manager'} onChange={() => setFormData({...formData, role: 'Manager'})} className="accent-brand-blue"/> Manager
-                       </label>
-                       <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="role" checked={formData.role === 'Super Admin'} onChange={() => setFormData({...formData, role: 'Super Admin'})} className="accent-brand-blue"/> Super Admin
-                       </label>
-                    </div>
-                 </div>
-
-                 <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Permissions</label>
                     <div className="grid grid-cols-2 gap-2">
                        {availablePermissions.map(perm => (
@@ -186,13 +173,13 @@ const AdminManagers: React.FC = () => {
                              key={perm.id} 
                              onClick={() => togglePermission(perm.id)}
                              className={`text-sm px-3 py-2 rounded-lg border cursor-pointer flex items-center justify-between ${
-                                (formData.permissions?.includes(perm.id) || formData.role === 'Super Admin') 
+                                formData.permissions?.includes(perm.id)
                                 ? 'bg-blue-50 border-brand-blue text-brand-blue' 
                                 : 'bg-white border-gray-200 text-gray-500'
                              }`}
                           >
                              {perm.label}
-                             {(formData.permissions?.includes(perm.id) || formData.role === 'Super Admin') && <CheckCircle size={14}/>}
+                             {formData.permissions?.includes(perm.id) && <CheckCircle size={14}/>}
                           </div>
                        ))}
                     </div>

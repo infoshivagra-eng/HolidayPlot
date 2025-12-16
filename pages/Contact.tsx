@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle, Loader2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle, Loader2, ArrowRight } from 'lucide-react';
 import { useGlobal } from '../GlobalContext';
+import { Link } from 'react-router-dom';
 
 const Contact: React.FC = () => {
   const { companyProfile, addBooking } = useGlobal();
@@ -117,54 +118,70 @@ const Contact: React.FC = () => {
             </div>
           </div>
 
-          {/* Contact Form */}
-          <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-gray-100">
-            {submitted ? (
-              <div className="h-full flex flex-col items-center justify-center text-center animate-fade-in">
-                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
-                  <CheckCircle size={40} />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Message Sent!</h3>
-                <p className="text-gray-500">We've received your enquiry. One of our agents will contact you at {formData.email} shortly.</p>
-                <button onClick={handleReset} className="mt-8 text-brand-blue font-bold hover:underline">Send another message</button>
-              </div>
+          {/* Contact Form Logic */}
+          <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-gray-100 overflow-hidden">
+            {companyProfile.customContactFormEmbed ? (
+               // RENDER EXTERNAL FORM
+               <div className="w-full h-full flex flex-col items-center">
+                  <div 
+                     className="w-full h-full min-h-[500px]"
+                     dangerouslySetInnerHTML={{ __html: companyProfile.customContactFormEmbed }}
+                  />
+                  <p className="text-xs text-gray-400 mt-2 italic text-center">Using external contact form.</p>
+               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">First Name</label>
-                    <input required type="text" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all"/>
+               // RENDER INTERNAL FORM
+               submitted ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center animate-fade-in">
+                    <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+                      <CheckCircle size={40} />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Message Sent!</h3>
+                    <p className="text-gray-500 max-w-xs">Your enquiry has been securely saved to our database. Our team will review it in the Admin Dashboard and contact you at {formData.email}.</p>
+                    
+                    <div className="mt-8 flex gap-4">
+                        <button onClick={handleReset} className="text-gray-500 font-bold hover:text-gray-800 text-sm">Send another</button>
+                        <Link to="/" className="text-brand-blue font-bold hover:underline flex items-center gap-1 text-sm">Return Home <ArrowRight size={14}/></Link>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
-                    <input required type="text" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all"/>
-                  </div>
-                </div>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">First Name</label>
+                        <input required type="text" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all"/>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
+                        <input required type="text" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all"/>
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
-                  <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all"/>
-                </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
+                      <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all"/>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Subject</label>
-                  <select value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all">
-                    <option>General Enquiry</option>
-                    <option>Booking Issue</option>
-                    <option>Partnership</option>
-                    <option>Feedback</option>
-                  </select>
-                </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Subject</label>
+                      <select value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all">
+                        <option>General Enquiry</option>
+                        <option>Booking Issue</option>
+                        <option>Partnership</option>
+                        <option>Feedback</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Message</label>
-                  <textarea required rows={4} value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all resize-none"></textarea>
-                </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Message</label>
+                      <textarea required rows={4} value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all resize-none"></textarea>
+                    </div>
 
-                <button type="submit" disabled={loading} className="w-full bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-brand-blue transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                  {loading ? <Loader2 className="animate-spin" size={18}/> : <Send size={18} />} Send Message
-                </button>
-              </form>
+                    <button type="submit" disabled={loading} className="w-full bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-brand-blue transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                      {loading ? <Loader2 className="animate-spin" size={18}/> : <Send size={18} />} Send Message
+                    </button>
+                  </form>
+                )
             )}
           </div>
 

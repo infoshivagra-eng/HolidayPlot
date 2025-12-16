@@ -22,25 +22,15 @@ export const convertPrice = (price: number, currency: 'USD' | 'INR'): string => 
 };
 
 export const getSmartApiKey = (): string | undefined => {
+  // STRICT SECURITY: Only allow keys from process.env as per secure guidelines
   if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
     return process.env.API_KEY;
   }
-  try {
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
-      // @ts-ignore
-      return import.meta.env.VITE_API_KEY;
-    }
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.API_KEY) {
-       // @ts-ignore
-      return import.meta.env.API_KEY;
-    }
-  } catch (e) {}
+  // Check for injected window key (often used in controlled demo environments)
   if (typeof window !== 'undefined' && (window as any).API_KEY) {
     return (window as any).API_KEY;
   }
-  return "AIzaSyBwZxqDYvF5QJ_tq1S3829TlSQFncFEF4Q";
+  return undefined;
 };
 
 // --- NEW ROBUST AI GENERATOR (Multi-Provider) ---
@@ -68,7 +58,11 @@ export const generateAIContent = async (prompt: string): Promise<string> => {
     }
     
     // Fallback if empty configuration
-    if (keysToTry.length === 0) keysToTry.push(envKey || '');
+    if (keysToTry.length === 0 && envKey) keysToTry.push(envKey);
+
+    if (keysToTry.length === 0) {
+        throw new Error("No API Key available. Please configure it in Settings or via environment variables.");
+    }
 
     const uniqueKeys = [...new Set(keysToTry)].filter(k => k);
     let lastError: any = null;

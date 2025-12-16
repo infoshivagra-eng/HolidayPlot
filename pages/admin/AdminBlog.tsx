@@ -1,18 +1,18 @@
 
-import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Search, Sparkles, Loader2, Save, X, Globe, Eye, FileText, HelpCircle, Image as ImageIcon, CheckCircle, ExternalLink, Bold, Italic, Heading, Type, ImagePlus, PenTool, Hash, Settings2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Search, Sparkles, Loader2, Save, X, Globe, Eye, FileText, HelpCircle, Image as ImageIcon, CheckCircle, ExternalLink, Bold, Italic, Heading, Type, ImagePlus, PenTool, Hash, Settings2, Calendar, Map, Activity, Package, Monitor, Smartphone, Maximize } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useGlobal } from '../../GlobalContext';
-import { BlogPost, FaqItem } from '../../types';
+import { BlogPost, FaqItem, WeatherData, FestivalData } from '../../types';
 import { generateAIContent } from '../../utils';
 
 const AdminBlog: React.FC = () => {
-  const { blogPosts, addBlogPost, updateBlogPost, deleteBlogPost } = useGlobal();
+  const { blogPosts, addBlogPost, updateBlogPost, deleteBlogPost, packages } = useGlobal();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState<'content' | 'faq' | 'gallery'>('content');
+  const [activeTab, setActiveTab] = useState<'content' | 'rich_data' | 'faq' | 'gallery'>('content');
   
   // Editor States
   const [editorMode, setEditorMode] = useState<'write' | 'preview'>('write');
@@ -23,12 +23,16 @@ const AdminBlog: React.FC = () => {
   const [imageParams, setImageParams] = useState({
     style: 'Any',
     mood: 'Any',
-    lighting: 'Any'
+    size: 'Medium' // Small, Medium, Full
   });
 
   const styles = ['Any', 'Cinematic', 'Minimalist', 'Vintage', 'Vibrant', 'Black & White', 'Drone Shot', 'Wide Angle', 'Close Up'];
   const moods = ['Any', 'Happy', 'Serene', 'Dark', 'Romantic', 'Adventurous', 'Professional', 'Cozy', 'Mysterious'];
-  const lightings = ['Any', 'Daylight', 'Golden Hour', 'Blue Hour', 'Night', 'Studio', 'Neon', 'Natural', 'Dramatic'];
+  const sizes = [
+      { label: 'Small (300px)', value: '300', class: 'w-[300px]' },
+      { label: 'Medium (Blog Standard)', value: '800', class: 'w-full max-w-2xl' },
+      { label: 'Full Banner', value: '1200', class: 'w-full' }
+  ];
 
   const [formData, setFormData] = useState<BlogPost>({
     id: '',
@@ -45,7 +49,14 @@ const AdminBlog: React.FC = () => {
     seoDescription: '',
     geoFocus: '',
     faq: [],
-    gallery: []
+    gallery: [],
+    // New Fields
+    topActivities: [],
+    weatherData: [],
+    festivals: [],
+    adventurePairs: [],
+    bestTimeDescription: '',
+    relatedPackageId: ''
   });
 
   // FAQ Handlers
@@ -83,7 +94,8 @@ const AdminBlog: React.FC = () => {
     setFormData({
       id: '', title: '', slug: '', excerpt: '', content: '', image: '',
       author: 'Admin', date: new Date().toISOString().split('T')[0], tags: [],
-      status: 'Draft', seoTitle: '', seoDescription: '', geoFocus: '', faq: [], gallery: []
+      status: 'Draft', seoTitle: '', seoDescription: '', geoFocus: '', faq: [], gallery: [],
+      topActivities: [], weatherData: [], festivals: [], adventurePairs: [], bestTimeDescription: '', relatedPackageId: ''
     });
     setEditingId(null);
     setActiveTab('content');
@@ -118,6 +130,17 @@ const AdminBlog: React.FC = () => {
 
   // --- AI HANDLERS ---
 
+  const findRelatedPackage = (title: string, geo: string) => {
+      // Logic to auto-select a package based on similarity
+      const searchStr = (title + " " + geo).toLowerCase();
+      const match = packages.find(p => 
+          searchStr.includes(p.destination.toLowerCase()) || 
+          searchStr.includes(p.name.toLowerCase()) ||
+          p.destination.toLowerCase().includes(geo.toLowerCase())
+      );
+      return match ? match.id : '';
+  };
+
   const handleAiSmartGenerate = async () => {
     if (!formData.title) {
         alert("Please enter a Title first to guide the AI.");
@@ -125,20 +148,31 @@ const AdminBlog: React.FC = () => {
     }
     setIsGenerating(true);
     try {
-        const prompt = `Write a comprehensive, SEO-optimized travel blog post for the title: "${formData.title}".
-        Focus on: GEO location ${formData.geoFocus || 'India'}.
+        const prompt = `Write a comprehensive, detailed travel blog post for: "${formData.title}".
+        Focus Location: ${formData.geoFocus || 'India'}.
         
         Return ONLY a JSON object with this exact structure:
         {
-            "excerpt": "Short engaging summary (150 chars)",
+            "excerpt": "Engaging summary (150 chars)",
             "content": "<p>Rich HTML content using <h2> and <h3>...</p>",
             "tags": ["tag1", "tag2"],
             "seoTitle": "Optimized Title",
-            "seoDescription": "Optimized Meta Description"
+            "seoDescription": "Optimized Meta Description",
+            "topActivities": ["Activity 1", "Activity 2"],
+            "bestTimeDescription": "Detailed paragraph about when to visit...",
+            "weatherData": [
+               { "month": "Jan", "tempHigh": "25°C", "tempLow": "15°C", "rain": "Low" }
+            ],
+            "festivals": [
+               { "name": "Name", "month": "Month", "description": "Desc" }
+            ],
+            "adventurePairs": ["Place 1 (Activity 1)"]
         }`;
 
         const jsonStr = await generateAIContent(prompt);
         const data = JSON.parse(jsonStr);
+
+        const autoPackageId = findRelatedPackage(formData.title, formData.geoFocus || '');
 
         setFormData(prev => ({
             ...prev,
@@ -146,10 +180,16 @@ const AdminBlog: React.FC = () => {
             content: data.content || prev.content,
             tags: data.tags || prev.tags,
             seoTitle: data.seoTitle || prev.seoTitle,
-            seoDescription: data.seoDescription || prev.seoDescription
+            seoDescription: data.seoDescription || prev.seoDescription,
+            topActivities: data.topActivities || [],
+            bestTimeDescription: data.bestTimeDescription || '',
+            weatherData: data.weatherData || [],
+            festivals: data.festivals || [],
+            adventurePairs: data.adventurePairs || [],
+            relatedPackageId: autoPackageId || prev.relatedPackageId
         }));
         
-        alert("Content generated! Check the Content tab.");
+        alert("Full Content & Rich Data generated! Check all tabs.");
     } catch (e: any) {
         alert("AI Generation failed: " + e.message);
     } finally {
@@ -157,47 +197,37 @@ const AdminBlog: React.FC = () => {
     }
   };
 
-  const handleAiKeywords = async () => {
-      if (!formData.title) { alert("Enter a title first."); return; }
+  const handleGranularAI = async (section: 'rich_data' | 'faq' | 'gallery') => {
+      if (!formData.title) { alert("Title required."); return; }
       setIsGenerating(true);
+      
       try {
-          const prompt = `Generate 5 trending, high-traffic SEO keywords/tags for a travel blog post titled "${formData.title}" focused on "${formData.geoFocus}". Return ONLY a comma-separated list of words (e.g. "Travel, India, Food").`;
-          const result = await generateAIContent(prompt);
-          const tags = result.split(',').map(t => t.trim().replace(/^#/, '')); // Remove hashtags if AI adds them
-          setFormData(prev => ({ ...prev, tags }));
-      } catch (e) {
-          alert("Failed to generate keywords.");
-      } finally {
-          setIsGenerating(false);
-      }
-  };
+          let prompt = `Context: Travel blog about "${formData.title}" in "${formData.geoFocus || 'India'}".`;
+          
+          if (section === 'rich_data') {
+              prompt += ` Generate JSON for: topActivities (array of strings), weatherData (array of 12 objects with month, tempHigh, tempLow, rain), festivals (array of 2-3 objects), adventurePairs (array of strings).`;
+          } else if (section === 'faq') {
+              prompt += ` Generate JSON: faq (array of 5 objects with question, answer). Focus on safety, best time, and costs.`;
+          } else if (section === 'gallery') {
+              prompt += ` Generate JSON: gallery (array of 4 Unsplash Image URLs that are valid and relevant). Use format: https://source.unsplash.com/800x600/?keyword`;
+          }
 
-  const handleAiFaqs = async () => {
-      if (!formData.title) { alert("Enter a title first."); return; }
-      setIsGenerating(true);
-      try {
-          const prompt = `Generate 4 relevant FAQs for a blog post titled "${formData.title}". Return ONLY a JSON array: [{"question": "...", "answer": "..."}]`;
-          const jsonStr = await generateAIContent(prompt);
-          const faqs = JSON.parse(jsonStr);
-          setFormData(prev => ({ ...prev, faq: faqs }));
-      } catch (e) {
-          alert("Failed to generate FAQs");
-      } finally {
-          setIsGenerating(false);
-      }
-  };
+          const jsonStr = await generateAIContent(prompt + " Return ONLY JSON.");
+          const data = JSON.parse(jsonStr);
 
-  const handleAiGallery = async () => {
-      if (!formData.title) { alert("Enter a title first."); return; }
-      setIsGenerating(true);
-      try {
-          const prompt = `Generate 4 single-word visual search keywords for a blog post titled "${formData.title}". Return ONLY a JSON array of strings: ["beach", "forest"]`;
-          const jsonStr = await generateAIContent(prompt);
-          const keywords = JSON.parse(jsonStr);
-          const images = keywords.map((k: string) => `https://source.unsplash.com/800x600/?${encodeURIComponent(k)}`);
-          setFormData(prev => ({ ...prev, gallery: images }));
-      } catch (e) {
-          alert("Failed to generate gallery");
+          setFormData(prev => ({
+              ...prev,
+              topActivities: data.topActivities || prev.topActivities,
+              weatherData: data.weatherData || prev.weatherData,
+              festivals: data.festivals || prev.festivals,
+              adventurePairs: data.adventurePairs || prev.adventurePairs,
+              faq: data.faq || prev.faq,
+              gallery: data.gallery || prev.gallery
+          }));
+          alert(`${section.replace('_', ' ')} generated!`);
+
+      } catch (e: any) {
+          alert("AI Error: " + e.message);
       } finally {
           setIsGenerating(false);
       }
@@ -229,35 +259,22 @@ const AdminBlog: React.FC = () => {
       else {
           const newHtml = formData.content + tagOpen + placeholder + tagClose;
           setFormData({ ...formData, content: newHtml });
-          // Note: In visual mode we append to end to avoid complex cursor tracking without a library
       }
   };
 
   const handleImageInsertClick = () => {
       let initialText = '';
-      
-      // 1. Try to get selection from Textarea if in write mode
       if (editorMode === 'write') {
           const textarea = document.getElementById('contentEditor') as HTMLTextAreaElement;
           if (textarea && textarea.selectionStart !== textarea.selectionEnd) {
               initialText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
           }
       } 
-      // 2. Try to get selection from Visual mode
-      else {
-          const selection = window.getSelection();
-          if (selection && selection.toString().length > 0) {
-              initialText = selection.toString();
-          }
-      }
-
-      // 3. Fallback to Title + Context if no text selected
       if (!initialText.trim()) {
-          initialText = formData.title ? `${formData.title} ${formData.geoFocus ? 'in ' + formData.geoFocus : ''}` : '';
+          initialText = formData.title ? `${formData.title} ${formData.geoFocus ? ' ' + formData.geoFocus : ''}` : '';
       }
-
       setImagePromptText(initialText);
-      setImageParams({ style: 'Any', mood: 'Any', lighting: 'Any' });
+      setImageParams({ style: 'Any', mood: 'Any', size: 'Medium' });
       setShowImageModal(true);
   };
 
@@ -266,28 +283,35 @@ const AdminBlog: React.FC = () => {
       setIsGenerating(true);
       setShowImageModal(false);
       try {
-          // Construct a complex prompt based on params
-          const prompt = `
-            Analyze this image request:
-            Description: "${imagePromptText}"
-            Style Preference: "${imageParams.style}"
-            Mood: "${imageParams.mood}"
-            Lighting: "${imageParams.lighting}"
-
-            Task: Provide ONE single highly relevant search keyword or short phrase (max 2-3 words) for a stock photo API (Unsplash) that best matches this description and style.
-            Constraint: Return ONLY the keyword string. No explanations.
-          `;
-          
+          const prompt = `Provide ONE single search keyword for an image based on: "${imagePromptText}". Style: ${imageParams.style}. Return ONLY the keyword.`;
           const keywordRaw = await generateAIContent(prompt);
           const keyword = keywordRaw.replace(/[^a-zA-Z0-9 ]/g, '').trim();
           
-          // Use params in caption if specific
-          let caption = imagePromptText;
-          if (imageParams.style !== 'Any') caption += ` (${imageParams.style} style)`;
-
-          const imgTag = `\n<figure class="my-8">\n  <img src="https://source.unsplash.com/800x600/?${encodeURIComponent(keyword)}" alt="${keyword}" class="w-full rounded-xl shadow-md object-cover" />\n  <figcaption class="text-center text-xs text-gray-500 italic mt-2">${caption}</figcaption>\n</figure>\n`;
+          // Use a reliable placeholder/source structure
+          // Adding timestamp to avoid caching issues during draft
+          const width = imageParams.size === 'Small' ? 400 : imageParams.size === 'Medium' ? 800 : 1200;
+          const height = imageParams.size === 'Small' ? 300 : 600;
           
-          insertContent(imgTag);
+          const imgUrl = `https://source.unsplash.com/featured/${width}x${height}/?${encodeURIComponent(keyword)}`;
+          
+          // Construct HTML with style for resizing
+          let styleClass = "w-full max-w-2xl mx-auto rounded-xl shadow-md object-cover my-6";
+          if (imageParams.size === 'Small') styleClass = "w-[300px] float-right ml-4 mb-4 rounded-xl shadow-md object-cover";
+          if (imageParams.size === 'Full Banner') styleClass = "w-full h-96 object-cover rounded-xl shadow-md my-8";
+
+          const imgTag = `<figure class="${styleClass}"><img src="${imgUrl}" alt="${keyword}" class="w-full h-full object-cover rounded-lg" /><figcaption class="text-center text-xs text-gray-500 italic mt-2">${imagePromptText}</figcaption></figure>`;
+          
+          // Insert into content state directly
+          if (editorMode === 'write') {
+             const textarea = document.getElementById('contentEditor') as HTMLTextAreaElement;
+             const start = textarea ? textarea.selectionStart : formData.content.length;
+             const end = textarea ? textarea.selectionEnd : formData.content.length;
+             const newText = formData.content.substring(0, start) + imgTag + formData.content.substring(end);
+             setFormData(prev => ({ ...prev, content: newText }));
+          } else {
+             setFormData(prev => ({ ...prev, content: prev.content + imgTag }));
+          }
+          alert("Image inserted! Check the editor content.");
       } catch (e) {
           alert("Failed to generate image.");
       } finally {
@@ -302,7 +326,7 @@ const AdminBlog: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
             <h1 className="text-2xl font-bold text-gray-900">Blog Manager</h1>
-            <p className="text-sm text-gray-500">Create rich, SEO-friendly content with FAQs and Galleries.</p>
+            <p className="text-sm text-gray-500">Create rich, SEO-friendly content with advanced travel guides.</p>
         </div>
         <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="bg-brand-blue text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-sky-600 transition-colors shadow-lg">
           <Plus size={20} /> New Post
@@ -388,6 +412,9 @@ const AdminBlog: React.FC = () => {
                  <button onClick={() => setActiveTab('content')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'content' ? 'border-brand-blue text-brand-blue bg-blue-50' : 'border-transparent text-gray-500'}`}>
                     <FileText size={16}/> Content & SEO
                  </button>
+                 <button onClick={() => setActiveTab('rich_data')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'rich_data' ? 'border-brand-blue text-brand-blue bg-blue-50' : 'border-transparent text-gray-500'}`}>
+                    <Map size={16}/> Rich Data (Weather, Activities)
+                 </button>
                  <button onClick={() => setActiveTab('faq')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'faq' ? 'border-brand-blue text-brand-blue bg-blue-50' : 'border-transparent text-gray-500'}`}>
                     <HelpCircle size={16}/> Q&A (AEO)
                  </button>
@@ -434,7 +461,7 @@ const AdminBlog: React.FC = () => {
                             </div>
 
                             {/* RICH TEXT EDITOR */}
-                            <div className="bg-white rounded-xl border border-gray-300 overflow-hidden shadow-sm flex flex-col h-[500px]">
+                            <div className="bg-white rounded-xl border border-gray-300 overflow-hidden shadow-sm flex flex-col h-[600px]">
                                 <div className="flex flex-wrap justify-between items-center gap-2 p-2 bg-gray-50 border-b border-gray-200">
                                     <div className="flex items-center gap-1">
                                         <button type="button" onClick={() => insertContent('<b>', '</b>')} className="p-2 hover:bg-gray-200 rounded text-gray-600" title="Bold"><Bold size={16}/></button>
@@ -481,38 +508,148 @@ const AdminBlog: React.FC = () => {
                                     ></textarea>
                                 ) : (
                                     <div className="w-full h-full p-8 bg-white overflow-y-auto border border-gray-200 rounded-b-xl relative group">
-                                        <div className="absolute top-2 right-2 text-[10px] uppercase font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                            Visual Editor Enabled
-                                        </div>
                                         <div 
                                             className="prose prose-lg prose-blue max-w-none text-gray-800 outline-none"
-                                            contentEditable
-                                            suppressContentEditableWarning
                                             dangerouslySetInnerHTML={{ __html: formData.content || '<p class="text-gray-400 italic">Start writing content to see a preview...</p>' }}
-                                            onBlur={(e) => setFormData({ ...formData, content: e.currentTarget.innerHTML })}
                                         />
                                     </div>
                                 )}
                             </div>
 
                             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="font-bold text-gray-800 flex items-center gap-2"><Globe size={16}/> SEO Override</h3>
-                                    <button 
-                                        type="button" 
-                                        onClick={handleAiKeywords} 
-                                        disabled={isGenerating}
-                                        className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold hover:bg-orange-200 flex items-center gap-1"
-                                    >
-                                        <Hash size={12}/> Generate Trending Keywords
-                                    </button>
-                                </div>
                                 <div className="grid md:grid-cols-2 gap-4">
-                                    <input type="text" placeholder="SEO Title (if different)" value={formData.seoTitle || ''} onChange={e => setFormData({...formData, seoTitle: e.target.value})} className={inputClass}/>
-                                    <input type="text" placeholder="SEO Keywords (comma separated)" value={formData.tags.join(', ')} onChange={e => setFormData({...formData, tags: e.target.value.split(',').map(s=>s.trim())})} className={inputClass}/>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">SEO Title</label>
+                                        <input type="text" value={formData.seoTitle || ''} onChange={e => setFormData({...formData, seoTitle: e.target.value})} className={inputClass}/>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Keywords</label>
+                                        <input type="text" value={formData.tags.join(', ')} onChange={e => setFormData({...formData, tags: e.target.value.split(',').map(s=>s.trim())})} className={inputClass}/>
+                                    </div>
                                 </div>
                             </div>
                         </>
+                    )}
+
+                    {/* RICH DATA TAB */}
+                    {activeTab === 'rich_data' && (
+                        <div className="space-y-8">
+                            <div className="flex justify-end">
+                                <button type="button" onClick={() => handleGranularAI('rich_data')} disabled={isGenerating} className="text-sm bg-purple-50 text-purple-700 px-4 py-2 rounded-lg font-bold hover:bg-purple-100 flex items-center gap-1 transition-colors border border-purple-200">
+                                    {isGenerating ? <Loader2 className="animate-spin" size={14}/> : <Sparkles size={14}/>} Auto-Generate Rich Data
+                                </button>
+                            </div>
+                            
+                            {/* Top Activities */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Top Things to Do (Comma Separated)</label>
+                                <textarea 
+                                    rows={2} 
+                                    className={inputClass}
+                                    value={formData.topActivities?.map((a: any) => typeof a === 'string' ? a : (a.activity || a)).join(', ')}
+                                    onChange={(e) => setFormData({...formData, topActivities: e.target.value.split(',').map(s => s.trim())})}
+                                    placeholder="River Rafting, Temple Visit, Hiking..."
+                                ></textarea>
+                            </div>
+
+                            {/* Best Time */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Best Time to Visit Description</label>
+                                <textarea 
+                                    rows={3} 
+                                    className={inputClass}
+                                    value={formData.bestTimeDescription}
+                                    onChange={(e) => setFormData({...formData, bestTimeDescription: e.target.value})}
+                                ></textarea>
+                            </div>
+
+                            {/* Weather Data */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Calendar size={16}/> Weather Table (12 Months)</h3>
+                                <div className="grid grid-cols-4 gap-2 text-xs font-bold text-gray-500 uppercase mb-1">
+                                    <div>Month</div><div>High</div><div>Low</div><div>Rain</div>
+                                </div>
+                                <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
+                                    {(formData.weatherData && formData.weatherData.length > 0 ? formData.weatherData : Array.from({length: 12}, (_, i) => ({
+                                        month: new Date(0, i).toLocaleString('en', {month:'short'}), tempHigh: '', tempLow: '', rain: ''
+                                    }))).map((w, idx) => (
+                                        <div key={idx} className="grid grid-cols-4 gap-2">
+                                            <input type="text" value={w.month} className="p-2 border rounded bg-gray-50" readOnly />
+                                            <input type="text" value={w.tempHigh} onChange={e => {
+                                                const newData = [...(formData.weatherData || [])];
+                                                if(!newData[idx]) newData[idx] = { month: w.month, tempHigh: '', tempLow: '', rain: '' };
+                                                newData[idx].tempHigh = e.target.value;
+                                                setFormData({...formData, weatherData: newData});
+                                            }} placeholder="30°C" className="p-2 border rounded"/>
+                                            <input type="text" value={w.tempLow} onChange={e => {
+                                                const newData = [...(formData.weatherData || [])];
+                                                if(!newData[idx]) newData[idx] = { month: w.month, tempHigh: '', tempLow: '', rain: '' };
+                                                newData[idx].tempLow = e.target.value;
+                                                setFormData({...formData, weatherData: newData});
+                                            }} placeholder="20°C" className="p-2 border rounded"/>
+                                            <input type="text" value={w.rain} onChange={e => {
+                                                const newData = [...(formData.weatherData || [])];
+                                                if(!newData[idx]) newData[idx] = { month: w.month, tempHigh: '', tempLow: '', rain: '' };
+                                                newData[idx].rain = e.target.value;
+                                                setFormData({...formData, weatherData: newData});
+                                            }} placeholder="Low" className="p-2 border rounded"/>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Festivals */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase">Major Festivals</label>
+                                    <button type="button" onClick={() => setFormData(prev => ({...prev, festivals: [...(prev.festivals||[]), {name:'', month:'', description:''}]}))} className="text-xs text-brand-blue">+ Add</button>
+                                </div>
+                                {formData.festivals?.map((f, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input type="text" placeholder="Name" value={f.name} onChange={e => {
+                                            const newF = [...(formData.festivals || [])]; newF[i].name = e.target.value; setFormData({...formData, festivals: newF});
+                                        }} className="w-1/4 p-2 border rounded text-sm"/>
+                                        <input type="text" placeholder="Month" value={f.month} onChange={e => {
+                                            const newF = [...(formData.festivals || [])]; newF[i].month = e.target.value; setFormData({...formData, festivals: newF});
+                                        }} className="w-1/4 p-2 border rounded text-sm"/>
+                                        <input type="text" placeholder="Desc" value={f.description} onChange={e => {
+                                            const newF = [...(formData.festivals || [])]; newF[i].description = e.target.value; setFormData({...formData, festivals: newF});
+                                        }} className="w-2/4 p-2 border rounded text-sm"/>
+                                        <button type="button" onClick={() => {
+                                            const newF = [...(formData.festivals || [])]; newF.splice(i,1); setFormData({...formData, festivals: newF});
+                                        }} className="text-red-500"><X size={16}/></button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Adventure Pairs */}
+                            <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Adventure Pairs (Nearby places)</label>
+                                <textarea 
+                                    rows={2} 
+                                    className={inputClass}
+                                    value={formData.adventurePairs?.map((p: any) => typeof p === 'string' ? p : `${p.place || ''} ${p.activity || ''}`).join(', ')}
+                                    onChange={(e) => setFormData({...formData, adventurePairs: e.target.value.split(',').map(s => s.trim())})}
+                                    placeholder="Rishikesh, Corbett National Park..."
+                                ></textarea>
+                            </div>
+
+                            {/* Linked Package */}
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                <label className="block text-xs font-bold text-blue-800 uppercase mb-2">Related Booking Package (Auto-Detected)</label>
+                                <select 
+                                    value={formData.relatedPackageId || ''} 
+                                    onChange={e => setFormData({...formData, relatedPackageId: e.target.value})}
+                                    className={inputClass}
+                                >
+                                    <option value="">-- None --</option>
+                                    {packages.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name} ({p.destination})</option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-blue-600 mt-1">This package card will be displayed at the bottom of the blog post.</p>
+                            </div>
+                        </div>
                     )}
 
                     {/* FAQ TAB */}
@@ -521,8 +658,8 @@ const AdminBlog: React.FC = () => {
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="font-bold text-gray-800">Frequently Asked Questions (FAQ Schema)</h3>
                                 <div className="flex gap-2">
-                                    <button type="button" onClick={handleAiFaqs} disabled={isGenerating} className="text-sm bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-100 flex items-center gap-1">
-                                        {isGenerating ? <Loader2 className="animate-spin" size={14}/> : <Sparkles size={14}/>} Generate FAQs
+                                    <button type="button" onClick={() => handleGranularAI('faq')} disabled={isGenerating} className="text-sm bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-100 flex items-center gap-1 transition-colors border border-purple-200">
+                                        {isGenerating ? <Loader2 className="animate-spin" size={14}/> : <Sparkles size={14}/>} Auto-Generate FAQs
                                     </button>
                                     <button type="button" onClick={addFaq} className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 flex items-center gap-1">
                                         <Plus size={16}/> Add Manual
@@ -543,7 +680,6 @@ const AdminBlog: React.FC = () => {
                                         </div>
                                     </div>
                                 ))}
-                                {(!formData.faq || formData.faq.length === 0) && <div className="text-center p-12 text-gray-400 bg-gray-100 rounded-xl border border-dashed border-gray-300">No FAQs added yet. Use AI to generate some instantly.</div>}
                             </div>
                         </div>
                     )}
@@ -554,8 +690,8 @@ const AdminBlog: React.FC = () => {
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="font-bold text-gray-800">Image Gallery</h3>
                                 <div className="flex gap-2">
-                                    <button type="button" onClick={handleAiGallery} disabled={isGenerating} className="text-sm bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-100 flex items-center gap-1">
-                                        {isGenerating ? <Loader2 className="animate-spin" size={14}/> : <Sparkles size={14}/>} Auto Gallery
+                                    <button type="button" onClick={() => handleGranularAI('gallery')} disabled={isGenerating} className="text-sm bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-100 flex items-center gap-1 transition-colors border border-purple-200">
+                                        {isGenerating ? <Loader2 className="animate-spin" size={14}/> : <Sparkles size={14}/>} Auto-Generate Gallery
                                     </button>
                                     <button type="button" onClick={addGalleryImage} className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 flex items-center gap-1">
                                         <Plus size={16}/> Add Manual
@@ -572,7 +708,6 @@ const AdminBlog: React.FC = () => {
                                         <button type="button" onClick={() => removeGalleryImage(idx)} className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg"><Trash2 size={18}/></button>
                                     </div>
                                 ))}
-                                {(!formData.gallery || formData.gallery.length === 0) && <div className="text-center p-12 text-gray-400 bg-gray-100 rounded-xl border border-dashed border-gray-300">No images. Generate a gallery with AI.</div>}
                             </div>
                         </div>
                     )}
@@ -594,39 +729,52 @@ const AdminBlog: React.FC = () => {
                  </div>
               </div>
 
-              {/* Image Insertion Modal (Nested Overlay) */}
+              {/* Image Insertion Modal */}
               {showImageModal && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                       <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md animate-fade-in">
                           <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                              <Sparkles className="text-purple-600" size={20}/> AI Image Finder
+                              <Sparkles className="text-purple-600" size={20}/> AI Image Finder & Resizer
                           </h3>
                           <div className="mb-4">
-                              <label className="block text-sm font-bold text-gray-700 mb-2">Describe the image you want</label>
+                              <label className="block text-sm font-bold text-gray-700 mb-2">Describe the image</label>
                               <textarea 
                                   value={imagePromptText}
                                   onChange={(e) => setImagePromptText(e.target.value)}
                                   className="w-full p-3 border border-gray-300 rounded-lg h-24 resize-none focus:ring-2 focus:ring-brand-blue outline-none"
-                                  placeholder="e.g. A serene houseboat floating on Kerala backwaters at sunset"
+                                  placeholder="e.g. A serene houseboat in Kerala"
                               ></textarea>
                               
                               <div className="mt-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
                                   <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-500 uppercase">
-                                      <Settings2 size={12}/> Refine Results
+                                      <Settings2 size={12}/> Refine
                                   </div>
-                                  <div className="grid grid-cols-2 gap-2">
-                                      <select value={imageParams.style} onChange={e => setImageParams({...imageParams, style: e.target.value})} className="w-full p-2 bg-white text-gray-900 text-xs border border-gray-300 rounded outline-none">
-                                          {styles.map(s => <option key={s} value={s}>{s === 'Any' ? 'Style: Any' : s}</option>)}
-                                      </select>
-                                      <select value={imageParams.mood} onChange={e => setImageParams({...imageParams, mood: e.target.value})} className="w-full p-2 bg-white text-gray-900 text-xs border border-gray-300 rounded outline-none">
-                                          {moods.map(m => <option key={m} value={m}>{m === 'Any' ? 'Mood: Any' : m}</option>)}
-                                      </select>
-                                      <select value={imageParams.lighting} onChange={e => setImageParams({...imageParams, lighting: e.target.value})} className="w-full p-2 bg-white text-gray-900 text-xs border border-gray-300 rounded outline-none col-span-2">
-                                          {lightings.map(l => <option key={l} value={l}>{l === 'Any' ? 'Lighting: Any' : l}</option>)}
-                                      </select>
+                                  <div className="space-y-3">
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <select value={imageParams.style} onChange={e => setImageParams({...imageParams, style: e.target.value})} className="w-full p-2 bg-white text-gray-900 text-xs border border-gray-300 rounded outline-none">
+                                              {styles.map(s => <option key={s} value={s}>{s}</option>)}
+                                          </select>
+                                          <select value={imageParams.mood} onChange={e => setImageParams({...imageParams, mood: e.target.value})} className="w-full p-2 bg-white text-gray-900 text-xs border border-gray-300 rounded outline-none">
+                                              {moods.map(m => <option key={m} value={m}>{m}</option>)}
+                                          </select>
+                                      </div>
+                                      
+                                      <div>
+                                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Display Size</label>
+                                          <div className="flex gap-2">
+                                              {sizes.map(s => (
+                                                  <button 
+                                                      key={s.value}
+                                                      onClick={() => setImageParams({...imageParams, size: s.label})}
+                                                      className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${imageParams.size === s.label ? 'bg-blue-100 border-brand-blue text-brand-blue' : 'bg-white border-gray-200 text-gray-600'}`}
+                                                  >
+                                                      {s.label.split(' ')[0]}
+                                                  </button>
+                                              ))}
+                                          </div>
+                                      </div>
                                   </div>
                               </div>
-                              <p className="text-xs text-gray-500 mt-2">AI will find the best visual match from stock libraries based on your description and filters.</p>
                           </div>
                           <div className="flex gap-3 justify-end">
                               <button onClick={() => setShowImageModal(false)} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
@@ -635,7 +783,7 @@ const AdminBlog: React.FC = () => {
                                   disabled={!imagePromptText}
                                   className="px-4 py-2 bg-brand-blue text-white font-bold rounded-lg hover:bg-sky-600 disabled:opacity-50"
                               >
-                                  Generate & Insert
+                                  Insert Image
                               </button>
                           </div>
                       </div>

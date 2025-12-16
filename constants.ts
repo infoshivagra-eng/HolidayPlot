@@ -1,7 +1,7 @@
 
 import { Package, Driver, RideRequest, Manager, BlogPost } from './types';
 
-// ... (Existing Constants for Packages, Drivers, Rides, Testimonials, Managers remain the same) ...
+// ... (Existing Constants for Packages, Drivers, Rides, Testimonials remain the same) ...
 export const POPULAR_PACKAGES: Package[] = [
   {
     id: 'p1',
@@ -338,6 +338,7 @@ export const MOCK_MANAGERS: Manager[] = [
     name: 'Admin User',
     username: 'admin',
     email: 'admin@holidaypot.in',
+    password: 'admin123', 
     role: 'Super Admin',
     permissions: ['manage_packages', 'manage_bookings', 'manage_drivers', 'manage_team', 'manage_settings', 'view_analytics'],
     avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=0EA5E9&color=fff',
@@ -348,7 +349,7 @@ export const MOCK_MANAGERS: Manager[] = [
     name: 'Sarah Manager',
     username: 'sarah',
     email: 'sarah@holidaypot.in',
-    password: '123', // Demo only
+    password: 'admin123', 
     role: 'Manager',
     permissions: ['manage_bookings', 'view_analytics'],
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80',

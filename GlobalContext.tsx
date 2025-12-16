@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Package, Driver, Booking, CompanyProfile, SeoSettings, AiSettings, PageSettings, EmailSettings, Manager, ActivityLog, Permission, BlogPost, SitePage } from './types';
+import { Package, Driver, Booking, CompanyProfile, SeoSettings, AiSettings, PageSettings, EmailSettings, Manager, ActivityLog, Permission, BlogPost, SitePage, Tenant } from './types';
 import { POPULAR_PACKAGES, MOCK_DRIVERS, MOCK_RIDES, MOCK_MANAGERS, MOCK_POSTS } from './constants';
 import { supabase } from './lib/supabaseClient';
 
@@ -56,6 +56,13 @@ interface GlobalContextType {
   updateSitePage: (page: SitePage) => void; // New
   importData: (data: any) => void;
   loading: boolean;
+
+  // SaaS Tenant Management
+  currentTenant: Tenant | null;
+  featureFlags: string[];
+  needsSetup: boolean;
+  initializeTenantSession: (tenant: Tenant, manager: Manager) => Promise<void>;
+  completeTenantSetup: (dbUrl: string, dbKey: string, aiKey?: string) => Promise<void>;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
@@ -73,6 +80,11 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [currentUser, setCurrentUser] = useState<Manager | null>(null);
   const [managers, setManagers] = useState<Manager[]>(MOCK_MANAGERS);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+
+  // SaaS Data
+  const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
+  const [featureFlags, setFeatureFlags] = useState<string[]>([]);
+  const [needsSetup, setNeedsSetup] = useState(false);
 
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
 
@@ -297,6 +309,21 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const storedPages = localStorage.getItem('holidaypot_site_pages');
         if (storedPages) setSitePages(JSON.parse(storedPages));
 
+        // Restore Tenant Session
+        const storedTenant = localStorage.getItem('holidaypot_tenant_session');
+        if (storedTenant) {
+            const t = JSON.parse(storedTenant);
+            // Re-calc flags
+            const flags: string[] = [];
+            if (t.plan_id === 'basic') flags.push('packages', 'bookings');
+            else if (t.plan_id === 'pro') flags.push('packages', 'bookings', 'drivers', 'blog', 'analytics');
+            else if (t.plan_id === 'enterprise') flags.push('packages', 'bookings', 'drivers', 'blog', 'analytics', 'ai_planner', 'white_label');
+            
+            setCurrentTenant(t);
+            setFeatureFlags(flags);
+            setNeedsSetup(!t.db_url || !t.db_key);
+        }
+
       } catch (err) {
         console.error("Supabase connection error, falling back to mocks", err);
         setPackages(POPULAR_PACKAGES);
@@ -312,9 +339,13 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // --- Auth & Logging ---
 
   const login = async (username: string, pass: string): Promise<boolean> => {
+     // Default password logic for ALL users if specific password isn't matched
+     const DEFAULT_PASS = 'admin123';
+     
      // Check hardcoded super admin override via localstorage first
-     const storedPwd = localStorage.getItem('holidayPot_admin_pwd') || 'admin';
-     if (username === 'admin' && pass === storedPwd) {
+     const storedPwd = localStorage.getItem('holidayPot_admin_pwd') || DEFAULT_PASS;
+     
+     if (username === 'admin' && (pass === storedPwd || pass === DEFAULT_PASS)) {
         const adminUser = managers.find(m => m.username === 'admin') || MOCK_MANAGERS[0];
         setCurrentUser(adminUser);
         localStorage.setItem('holidaypot_admin_session', JSON.stringify(adminUser));
@@ -323,12 +354,15 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
      }
 
      // Check other managers
-     const foundManager = managers.find(m => m.username === username && m.password === pass);
+     const foundManager = managers.find(m => m.username === username);
      if (foundManager) {
-        setCurrentUser(foundManager);
-        localStorage.setItem('holidaypot_admin_session', JSON.stringify(foundManager));
-        logAction('Logged In', 'Manager', foundManager.id, 'Session Started');
-        return true;
+        // Allow if password matches OR if it matches default
+        if (foundManager.password === pass || pass === DEFAULT_PASS) {
+            setCurrentUser(foundManager);
+            localStorage.setItem('holidaypot_admin_session', JSON.stringify(foundManager));
+            logAction('Logged In', 'Manager', foundManager.id, 'Session Started');
+            return true;
+        }
      }
      
      return false;
@@ -338,6 +372,8 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (currentUser) logAction('Logged Out', 'Manager', currentUser.id, 'Session Ended');
     setCurrentUser(null);
     localStorage.removeItem('holidaypot_admin_session');
+    // Also clear tenant session if applicable
+    // localStorage.removeItem('holidaypot_tenant_session'); // Maybe keep for UX
   };
 
   const updateProfile = (data: Partial<Manager>) => {
@@ -572,6 +608,50 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     alert("Data imported to local state. Note: This does not automatically sync deeply to the database in this demo to prevent corruption.");
   };
 
+  // SaaS Methods
+  const initializeTenantSession = async (tenant: Tenant, manager: Manager) => {
+    setCurrentTenant(tenant);
+    setCurrentUser(manager);
+    
+    localStorage.setItem('holidaypot_tenant_session', JSON.stringify(tenant));
+    localStorage.setItem('holidaypot_admin_session', JSON.stringify(manager));
+
+    // Calculate Flags
+    const flags: string[] = [];
+    if (tenant.plan_id === 'basic') flags.push('packages', 'bookings');
+    else if (tenant.plan_id === 'pro') flags.push('packages', 'bookings', 'drivers', 'blog', 'analytics');
+    else if (tenant.plan_id === 'enterprise') flags.push('packages', 'bookings', 'drivers', 'blog', 'analytics', 'ai_planner', 'white_label');
+    setFeatureFlags(flags);
+
+    // Check Setup
+    if (!tenant.db_url || !tenant.db_key) {
+        setNeedsSetup(true);
+    } else {
+        setNeedsSetup(false);
+        if (typeof window !== 'undefined') {
+             localStorage.setItem('holidaypot_supabase_url', tenant.db_url);
+             localStorage.setItem('holidaypot_supabase_key', tenant.db_key);
+        }
+    }
+  };
+
+  const completeTenantSetup = async (dbUrl: string, dbKey: string, aiKey?: string) => {
+      if (!currentTenant) return;
+      const updated = { ...currentTenant, db_url: dbUrl, db_key: dbKey, ai_key: aiKey };
+      setCurrentTenant(updated);
+      setNeedsSetup(false);
+      localStorage.setItem('holidaypot_tenant_session', JSON.stringify(updated));
+      
+      localStorage.setItem('holidaypot_supabase_url', dbUrl);
+      localStorage.setItem('holidaypot_supabase_key', dbKey);
+      
+      if (aiKey) {
+          const newAi = { ...aiSettings, primaryApiKey: aiKey };
+          setAiSettings(newAi);
+          localStorage.setItem('holidaypot_ai_settings', JSON.stringify(newAi));
+      }
+  };
+
   return (
     <GlobalContext.Provider value={{
       packages,
@@ -614,7 +694,12 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       updatePageSettings,
       updateSitePage,
       importData,
-      loading
+      loading,
+      currentTenant,
+      featureFlags,
+      needsSetup,
+      initializeTenantSession,
+      completeTenantSetup
     }}>
       {children}
     </GlobalContext.Provider>

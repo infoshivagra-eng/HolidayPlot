@@ -17,6 +17,7 @@ import Contact from './pages/Contact';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Cancellation from './pages/Cancellation';
+import SupabaseSchemaViewer from './supabase_schema';
 import { CurrencyProvider, useCurrency } from './CurrencyContext';
 import { GlobalProvider, useGlobal } from './GlobalContext';
 
@@ -146,6 +147,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // Check if current route is admin to hide footer
   const isAdminRoute = location.pathname.startsWith('/admin');
+  // Check if schema viewer
+  const isSchemaRoute = location.pathname ===('/schema');
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -173,7 +176,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   // Maintenance Mode Check
-  if (pageSettings.maintenanceMode && !isAdminRoute) {
+  if (pageSettings.maintenanceMode && !isAdminRoute && !isSchemaRoute) {
      return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4 text-center">
            <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center mb-6">
@@ -183,6 +186,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
            <p className="text-gray-400 max-w-md">Our site is currently undergoing scheduled maintenance to improve your experience. Please check back soon.</p>
         </div>
      );
+  }
+
+  if (isSchemaRoute) {
+      return <>{children}</>;
   }
 
   return (
@@ -331,7 +338,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </main>
 
       {/* Footer - Hidded on Admin Route */}
-      {!isAdminRoute && <Footer />}
+      {!isAdminRoute && !isSchemaRoute && <Footer />}
     </div>
   );
 };
@@ -359,6 +366,7 @@ const App: React.FC = () => {
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/cancellation" element={<Cancellation />} />
+              <Route path="/schema" element={<SupabaseSchemaViewer />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

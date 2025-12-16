@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Filter, CheckCircle, XCircle, Clock, Package, Car, Sparkles, MessageSquare, LayoutGrid, FileSpreadsheet } from 'lucide-react';
+import { Filter, CheckCircle, XCircle, Clock, Package, Car, Sparkles, MessageSquare, LayoutGrid, FileSpreadsheet, AlertCircle, Handshake, ThumbsUp, HelpCircle } from 'lucide-react';
 import { useGlobal } from '../../GlobalContext';
 import { useCurrency } from '../../CurrencyContext';
 import * as XLSX from 'xlsx';
@@ -39,7 +39,7 @@ const AdminEnquiries: React.FC = () => {
         "Contact Phone": b.customerPhone,
         "Contact Email": b.customerEmail,
         "Type": b.type,
-        "Item / Service": b.itemName,
+        "Subject/Item": b.itemName,
         "Travelers": b.travelers,
         "Travel Date": b.travelDate ? new Date(b.travelDate).toLocaleDateString() : 'N/A',
         "Status": b.status,
@@ -54,11 +54,24 @@ const AdminEnquiries: React.FC = () => {
     
     // Basic Column Widths
     const wscols = [
-        {wch: 15}, {wch: 12}, {wch: 20}, {wch: 15}, {wch: 25}, {wch: 10}, {wch: 30}, {wch: 10}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 40}
+        {wch: 15}, {wch: 12}, {wch: 20}, {wch: 15}, {wch: 25}, {wch: 20}, {wch: 10}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 40}
     ];
     worksheet['!cols'] = wscols;
 
     XLSX.writeFile(workbook, `HolidayPot_Bookings_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const getEnquiryBadge = (subject: string) => {
+      switch(subject) {
+          case 'Booking Issue': 
+              return <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 text-red-700 text-xs font-bold border border-red-100"><AlertCircle size={12}/> Issue</span>;
+          case 'Partnership': 
+              return <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs font-bold border border-purple-100"><Handshake size={12}/> Partner</span>;
+          case 'Feedback': 
+              return <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-yellow-50 text-yellow-700 text-xs font-bold border border-yellow-100"><ThumbsUp size={12}/> Feedback</span>;
+          default: 
+              return <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-gray-100 text-gray-600 text-xs font-bold border border-gray-200"><HelpCircle size={12}/> Enquiry</span>;
+      }
   };
 
   return (
@@ -128,7 +141,7 @@ const AdminEnquiries: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filteredBookings.map(booking => (
-                <tr key={booking.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={booking.id} className={`hover:bg-gray-50 transition-colors ${booking.itemName === 'Booking Issue' ? 'bg-red-50/30' : ''}`}>
                   <td className="p-4">
                     <div className="font-mono text-xs font-bold text-gray-900">{booking.id}</div>
                     <div className="text-xs text-gray-500">{new Date(booking.date).toLocaleDateString()}</div>
@@ -139,16 +152,26 @@ const AdminEnquiries: React.FC = () => {
                     <div className="text-xs text-gray-400 truncate max-w-[150px]">{booking.customerEmail}</div>
                   </td>
                   <td className="p-4">
-                    <div className="text-sm text-gray-800 font-medium line-clamp-1" title={booking.itemName}>{booking.itemName}</div>
-                    <div className="text-xs text-gray-500">
-                        {booking.travelers} Travelers
-                        {booking.travelDate && ` • ${booking.travelDate}`}
-                    </div>
-                    {booking.message && (
-                        <div className="mt-1 text-xs text-gray-500 italic bg-gray-50 p-1 rounded border border-gray-100 line-clamp-1" title={booking.message}>
-                            "{booking.message}"
+                    <div className="flex flex-col gap-1">
+                        {booking.type === 'General' ? (
+                            <div className="flex items-center gap-2">
+                                {getEnquiryBadge(booking.itemName)}
+                                <span className="text-sm font-medium text-gray-900">{booking.itemName}</span>
+                            </div>
+                        ) : (
+                            <div className="text-sm text-gray-800 font-medium line-clamp-1" title={booking.itemName}>{booking.itemName}</div>
+                        )}
+                        
+                        <div className="text-xs text-gray-500">
+                            {booking.type !== 'General' && <>{booking.travelers} Travelers • </>}
+                            {booking.travelDate && <span>Travel: {booking.travelDate}</span>}
                         </div>
-                    )}
+                        {booking.message && (
+                            <div className="mt-1 text-xs text-gray-600 bg-gray-50 p-2 rounded border border-gray-100 line-clamp-2 w-full max-w-md italic" title={booking.message}>
+                                "{booking.message}"
+                            </div>
+                        )}
+                    </div>
                   </td>
                   <td className="p-4">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
@@ -162,7 +185,7 @@ const AdminEnquiries: React.FC = () => {
                     </span>
                   </td>
                   <td className="p-4 font-bold text-gray-900">
-                    {formatPrice(booking.totalAmount)}
+                    {booking.totalAmount > 0 ? formatPrice(booking.totalAmount) : '-'}
                   </td>
                   <td className="p-4 text-right">
                     {/* Only show actions if not already in that state */}

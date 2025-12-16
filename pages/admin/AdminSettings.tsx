@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Mail, Sparkles, Upload, Globe, AlertOctagon, Database, Download, Search, Server, Plus, Trash2, Link as LinkIcon, Facebook, Twitter, Instagram, Clock, Lock, MapPin, MessageCircle, FileText, Save, RefreshCw, Key, ShieldAlert, Bold, Italic, Heading, Eye, PenTool, ExternalLink, Loader2 } from 'lucide-react';
+import { Building2, Mail, Sparkles, Upload, Globe, AlertOctagon, Database, Download, Search, Server, Plus, Trash2, Link as LinkIcon, Facebook, Twitter, Instagram, Clock, Lock, MapPin, MessageCircle, FileText, Save, RefreshCw, Key, ShieldAlert, Bold, Italic, Heading, Eye, PenTool, ExternalLink, Loader2, Code } from 'lucide-react';
 import { useGlobal } from '../../GlobalContext';
 import { AiSettings, EmailSettings, CompanyProfile, SeoSettings, PageSettings, SitePage } from '../../types';
 import { generateAIContent } from '../../utils';
@@ -309,11 +309,30 @@ const AdminSettings: React.FC = () => {
                      </div>
                   </div>
 
+                  {/* External Contact Form Embed */}
+                  <div className="pt-6 border-t border-gray-100">
+                     <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Code size={16}/> External Form Embedding (Optional)</h3>
+                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Google Forms / Typeform Embed Code</label>
+                        <textarea 
+                           className={inputClass + " h-24 font-mono text-xs"}
+                           value={profileForm.customContactFormEmbed || ''}
+                           onChange={e => setProfileForm({...profileForm, customContactFormEmbed: e.target.value})}
+                           placeholder="<iframe src='https://docs.google.com/forms/...' width='640' height='800'></iframe>"
+                        ></textarea>
+                        <p className="text-[10px] text-gray-500 mt-2">
+                           <strong>Note:</strong> Pasting code here will replace the built-in Contact Form on the Contact page. 
+                           External form submissions <u>will not</u> appear in your Admin Dashboard.
+                        </p>
+                     </div>
+                  </div>
+
                   <button type="submit" className="w-full bg-brand-blue text-white font-bold py-3 rounded-xl hover:bg-sky-600 shadow-lg mt-4">Save Changes</button>
                </form>
             </div>
          )}
 
+         {/* ... (Other existing tabs remain unchanged) ... */}
          {activeSubTab === 'pages' && (
             <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 space-y-8">
                 <div className="flex justify-between items-center border-b border-gray-100 pb-6">

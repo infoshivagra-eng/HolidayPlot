@@ -13,11 +13,22 @@ const getEnvVar = (key: string) => {
 const storedUrl = typeof window !== 'undefined' ? localStorage.getItem('holidaypot_supabase_url') : null;
 const storedKey = typeof window !== 'undefined' ? localStorage.getItem('holidaypot_supabase_key') : null;
 
-// Default credentials for demo purposes
-const DEFAULT_URL = 'https://bwuunpecsglbywlftbio.supabase.co';
-const DEFAULT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3dXVucGVjc2dsYnl3bGZ0YmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2MjIxODEsImV4cCI6MjA4MTE5ODE4MX0.9zrPOOZgT0BZzlmh_yTf3LXt9pJx2KodK4uIOydRPrI';
+// Secure Defaults: Should come from environment variables or be empty to prevent exposure
+const DEFAULT_URL = '';
+const DEFAULT_KEY = '';
 
 const supabaseUrl = storedUrl || getEnvVar('PUBLIC_SUPABASE_URL') || DEFAULT_URL;
 const supabaseAnonKey = storedKey || getEnvVar('PUBLIC_SUPABASE_ANON_KEY') || DEFAULT_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create client only if URL and Key are present to avoid runtime errors on empty init
+export const supabase = (supabaseUrl && supabaseAnonKey) 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : { 
+      from: () => ({ 
+        select: () => Promise.resolve({ data: null, error: { message: 'No Supabase Configured' } }),
+        insert: () => Promise.resolve({ data: null, error: null }),
+        update: () => Promise.resolve({ data: null, error: null }),
+        delete: () => Promise.resolve({ data: null, error: null }),
+        upsert: () => Promise.resolve({ data: null, error: null })
+      }) 
+    } as any;
