@@ -4,6 +4,7 @@ import { Sparkles, Map, Calendar, Wallet, User, Loader2, ArrowRight, AlertTriang
 import { useCurrency } from '../CurrencyContext';
 import { generateAIContent } from '../utils'; // Use the new wrapper
 import { useGlobal } from '../GlobalContext';
+import { BlogPost } from '../types';
 
 interface AiPlannerSectionProps {
   embedded?: boolean;
@@ -11,7 +12,7 @@ interface AiPlannerSectionProps {
 
 const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false }) => {
   const { currency } = useCurrency();
-  const { companyProfile, addBooking } = useGlobal(); // Access global data and actions
+  const { companyProfile, addBooking, addBlogPost } = useGlobal(); // Access global data and actions
   const [loading, setLoading] = useState(false);
   const [itinerary, setItinerary] = useState<string>('');
   
@@ -57,6 +58,11 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
       const text = await generateAIContent(prompt);
       setItinerary(text);
 
+      // --- AUTO-BLOG GENERATION LOGIC ---
+      // We generate a draft blog post in the background based on this itinerary
+      // This is "fire and forget" so it doesn't block the UI
+      generateAutoBlog(formData.destination, text);
+
     } catch (error: any) {
       console.error("Error generating itinerary:", error);
       const msg = error.message || "Unknown error occurred";
@@ -82,6 +88,44 @@ const AiPlannerSection: React.FC<AiPlannerSectionProps> = ({ embedded = false })
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateAutoBlog = async (destination: string, itineraryContent: string) => {
+     try {
+        const dest = destination || 'India';
+        // Smart FAQs for AEO
+        const faqs = [
+            { question: `Is ${dest} safe for travelers?`, answer: `${dest} is generally safe, but always take standard precautions and respect local customs.` },
+            { question: `What is the best time to visit ${dest}?`, answer: `The best time to visit is typically between October and March to avoid extreme heat.` },
+            { question: `How many days do I need for ${dest}?`, answer: `A trip of ${formData.days} days is perfect to cover the main highlights as suggested in our itinerary.` }
+        ];
+
+        const newPost: BlogPost = {
+           id: `auto_blog_${Date.now()}`,
+           title: `${formData.days} Days in ${dest}: The Perfect Itinerary`,
+           slug: `${formData.days}-days-in-${dest.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+           excerpt: `Planning a trip to ${dest}? Check out this AI-curated itinerary covering the best spots, food, and hidden gems.`,
+           content: `
+             <p>Are you planning a trip to <strong>${dest}</strong>? We've generated a custom itinerary just for you based on popular demand.</p>
+             ${itineraryContent}
+             <h2>Why Visit ${dest}?</h2>
+             <p>${dest} offers a unique blend of culture and nature. This itinerary is designed to help you make the most of your time.</p>
+           `,
+           image: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=1000', // Default India image
+           author: 'AI Planner',
+           date: new Date().toISOString().split('T')[0],
+           tags: [dest, 'Itinerary', 'AI Generated'],
+           status: 'Draft', // Draft so admin can review
+           seoTitle: `${formData.days} Day Itinerary for ${dest} - Travel Guide`,
+           seoDescription: `Complete ${formData.days} day travel plan for ${dest}. Includes costs, sightseeing, and food recommendations.`,
+           geoFocus: dest,
+           faq: faqs,
+           gallery: [] // Empty gallery for auto-generated
+        };
+        addBlogPost(newPost);
+     } catch (e) {
+        console.error("Auto-blog generation failed silently", e);
+     }
   };
 
   const handleSaveClick = () => {

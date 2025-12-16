@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Search, Sparkles, Loader2, Save, X, ChevronDown, ChevronUp, MapPin, List, Utensils, Camera, Briefcase, Info, LayoutGrid } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Sparkles, Loader2, Save, X, ChevronDown, ChevronUp, MapPin, List, Utensils, Camera, Briefcase, Info, LayoutGrid, Filter } from 'lucide-react';
 import { useGlobal } from '../../GlobalContext';
 import { useCurrency } from '../../CurrencyContext';
 import { generateAIContent } from '../../utils';
@@ -10,6 +10,7 @@ const AdminPackages: React.FC = () => {
   const { packages, addPackage, updatePackage, deletePackage } = useGlobal();
   const { formatPrice } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
   
   // View Mode State
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -47,10 +48,14 @@ const AdminPackages: React.FC = () => {
     airportInfo: { bestLounge: '', price: 0, tips: '' } as AirportInfo
   });
 
-  const filteredPackages = packages.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.destination.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const categories = ['All', 'Culture', 'Nature', 'Adventure', 'Beach', 'Pilgrimage', 'Luxury', 'Budget'];
+
+  const filteredPackages = packages.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          p.destination.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === 'All' || p.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const resetForm = () => {
     setPkgForm({ 
@@ -289,7 +294,7 @@ const AdminPackages: React.FC = () => {
         </button>
       </div>
 
-      {/* Controls: Search & Toggle */}
+      {/* Controls: Search, Filter & Toggle */}
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-grow w-full">
           <Search className="absolute left-3 top-3 text-gray-400" size={20}/>
@@ -300,6 +305,20 @@ const AdminPackages: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className={inputClass + " pl-10"}
           />
+        </div>
+
+        {/* Category Filter */}
+        <div className="relative w-full md:w-48 flex-shrink-0">
+            <Filter className="absolute left-3 top-3 text-gray-400" size={18}/>
+            <select 
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className={inputClass + " pl-10 cursor-pointer"}
+            >
+                {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                ))}
+            </select>
         </div>
         
         {/* View Toggle */}
@@ -394,7 +413,7 @@ const AdminPackages: React.FC = () => {
                  </tbody>
               </table>
            </div>
-           {filteredPackages.length === 0 && <div className="p-8 text-center text-gray-400">No packages found.</div>}
+           {filteredPackages.length === 0 && <div className="p-8 text-center text-gray-400">No packages found for this category.</div>}
         </div>
       )}
 
@@ -463,7 +482,9 @@ const AdminPackages: React.FC = () => {
                         <div>
                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
                            <select value={pkgForm.category} onChange={e => setPkgForm({...pkgForm, category: e.target.value})} className={inputClass}>
-                              <option>Culture</option><option>Nature</option><option>Adventure</option><option>Beach</option><option>Pilgrimage</option><option>Luxury</option>
+                              {categories.filter(c => c !== 'All').map(c => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
                            </select>
                         </div>
                         <div>

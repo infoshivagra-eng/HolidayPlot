@@ -1,6 +1,7 @@
 
-import { Package, Driver, RideRequest, Manager } from './types';
+import { Package, Driver, RideRequest, Manager, BlogPost } from './types';
 
+// ... (Existing Constants for Packages, Drivers, Rides, Testimonials, Managers remain the same) ...
 export const POPULAR_PACKAGES: Package[] = [
   {
     id: 'p1',
@@ -352,5 +353,57 @@ export const MOCK_MANAGERS: Manager[] = [
     permissions: ['manage_bookings', 'view_analytics'],
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80',
     lastLogin: new Date(Date.now() - 86400000).toISOString()
+  }
+];
+
+export const MOCK_POSTS: BlogPost[] = [
+  {
+    id: 'b1',
+    title: '5 Hidden Gems in Kerala You Must Visit',
+    slug: 'hidden-gems-kerala',
+    excerpt: 'Beyond the backwaters, Kerala hides secret waterfalls and misty hills perfect for solitude seekers.',
+    content: `
+      <h2>The Unexplored Side of God's Own Country</h2>
+      <p>While Alleppey and Munnar steal the spotlight, Vattakanal offers a slice of Israel in India. The misty mountains here are perfect for trekking.</p>
+      <h3>1. Vattakanal</h3>
+      <p>Often called "Little Israel", this place offers stunning views of the Western Ghats. The dolphin's nose trek is a must-try experience here.</p>
+      <h3>2. Marari Beach</h3>
+      <p>A quiet alternative to Alleppey beach, perfect for sunset lovers who want to avoid the crowd. The fishermans village vibe is authentic and relaxing.</p>
+    `,
+    image: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+    author: 'Admin User',
+    date: '2024-10-15',
+    tags: ['Kerala', 'Nature', 'Hidden Gems'],
+    status: 'Published',
+    seoTitle: '5 Secret Places in Kerala 2024 Guide',
+    seoDescription: 'Discover the top 5 hidden gems in Kerala including Vattakanal and Marari Beach. Complete travel guide.',
+    faq: [
+      { question: 'What is the best time to visit Kerala?', answer: 'The best time to visit Kerala is between September and March when the weather is pleasant.' },
+      { question: 'How many days are enough for Kerala?', answer: 'Ideally, 5 to 7 days are sufficient to cover major attractions like Munnar, Alleppey, and Kochi.' }
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1593693396885-5a5899195229?w=800',
+      'https://images.unsplash.com/photo-1595842838985-0676a6d6d76d?w=800',
+      'https://images.unsplash.com/photo-1588258524675-c61995a98075?w=800'
+    ]
+  },
+  {
+    id: 'b2',
+    title: 'A Foodie\'s Guide to Rajasthan',
+    slug: 'food-guide-rajasthan',
+    excerpt: 'From Dal Baati Churma to Laal Maas, explore the spicy and sweet flavors of the royal state.',
+    content: '<p>Rajasthan is a paradise for food lovers. The arid land has given birth to a cuisine that uses plenty of milk, ghee, and buttermilk.</p><h3>Dal Baati Churma</h3><p>The flagship dish of Rajasthan. Hard wheat rolls (Baati) are dipped in ghee and eaten with spicy lentil curry (Dal) and sweetened crushed wheat (Churma).</p>',
+    image: 'https://images.unsplash.com/photo-1590766940554-634a7ed41450?q=80&w=1000&auto=format&fit=crop',
+    author: 'Sarah Manager',
+    date: '2024-10-20',
+    tags: ['Food', 'Rajasthan', 'Culture'],
+    status: 'Published',
+    faq: [
+      { question: 'Is Rajasthani food very spicy?', answer: 'Yes, traditional dishes like Laal Maas can be quite spicy due to the use of Mathania chillies.' }
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1626139576127-4589d97a022d?w=800',
+      'https://images.unsplash.com/photo-1606471191009-63994c53433b?w=800'
+    ]
   }
 ];

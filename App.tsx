@@ -10,6 +10,13 @@ import DriverDashboard from './pages/DriverDashboard';
 import Booking from './pages/Booking';
 import AdminDashboard from './pages/AdminDashboard';
 import AiPlanner from './pages/AiPlanner';
+import BlogList from './pages/BlogList';
+import BlogDetail from './pages/BlogDetail';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
+import Cancellation from './pages/Cancellation';
 import { CurrencyProvider, useCurrency } from './CurrencyContext';
 import { GlobalProvider, useGlobal } from './GlobalContext';
 
@@ -61,6 +68,7 @@ const Footer = () => {
             <div>
               <h3 className="text-lg font-semibold mb-6">Company</h3>
               <ul className="space-y-3 text-gray-400 text-sm">
+                <li><Link to="/about" className="hover:text-brand-green">About Us</Link></li>
                 <li><Link to="/ai-planner" className="hover:text-brand-green">AI Planner</Link></li>
                 <li><Link to="/taxi" className="hover:text-brand-green">Careers / Drivers</Link></li>
                 <li><Link to="/blog" className="hover:text-brand-green">Travel Blog</Link></li>
@@ -71,10 +79,10 @@ const Footer = () => {
             <div>
               <h3 className="text-lg font-semibold mb-6">Support</h3>
               <ul className="space-y-3 text-gray-400 text-sm">
-                <li><a href="#" className="hover:text-brand-green">Help Center</a></li>
-                <li><a href="#" className="hover:text-brand-green">Terms & Conditions</a></li>
-                <li><a href="#" className="hover:text-brand-green">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-brand-green">Cancellation Policy</a></li>
+                <li><Link to="/contact" className="hover:text-brand-green">Contact Us</Link></li>
+                <li><Link to="/terms" className="hover:text-brand-green">Terms & Conditions</Link></li>
+                <li><Link to="/privacy" className="hover:text-brand-green">Privacy Policy</Link></li>
+                <li><Link to="/cancellation" className="hover:text-brand-green">Cancellation Policy</Link></li>
               </ul>
             </div>
 
@@ -143,7 +151,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Home', path: '/' },
     { name: 'Packages', path: '/packages' },
     { name: 'AI Planner', path: '/ai-planner' },
-    { name: 'Taxi & Drivers', path: '/taxi' },
+    { name: 'Blog', path: '/blog' },
+    { name: 'Taxi', path: '/taxi' },
   ];
 
   if (loading) {
@@ -289,6 +298,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </Link>
               ))}
 
+              <div className="pt-4 border-t border-gray-100">
+                 <Link to="/about" className="block px-4 py-3 text-sm text-gray-600">About Us</Link>
+                 <Link to="/contact" className="block px-4 py-3 text-sm text-gray-600">Contact Us</Link>
+              </div>
+
               {currentUser ? (
                  <Link
                     to="/admin"
@@ -338,6 +352,13 @@ const App: React.FC = () => {
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/booking" element={<Booking />} />
               <Route path="/ai-planner" element={<AiPlanner />} />
+              <Route path="/blog" element={<BlogList />} />
+              <Route path="/blog/:slug" element={<BlogDetail />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/cancellation" element={<Cancellation />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

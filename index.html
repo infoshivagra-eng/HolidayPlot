@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -8,7 +9,8 @@
       // Immediate polyfill for process.env to prevent crashes in browser environments
       window.process = window.process || { env: { NODE_ENV: 'production' } };
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Updated Tailwind CDN to include typography plugin for Blog Preview -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {

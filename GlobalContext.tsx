@@ -1,18 +1,20 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Package, Driver, Booking, CompanyProfile, SeoSettings, AiSettings, PageSettings, EmailSettings, Manager, ActivityLog, Permission } from './types';
-import { POPULAR_PACKAGES, MOCK_DRIVERS, MOCK_RIDES, MOCK_MANAGERS } from './constants';
+import { Package, Driver, Booking, CompanyProfile, SeoSettings, AiSettings, PageSettings, EmailSettings, Manager, ActivityLog, Permission, BlogPost, SitePage } from './types';
+import { POPULAR_PACKAGES, MOCK_DRIVERS, MOCK_RIDES, MOCK_MANAGERS, MOCK_POSTS } from './constants';
 import { supabase } from './lib/supabaseClient';
 
 interface GlobalContextType {
   packages: Package[];
   drivers: Driver[];
   bookings: Booking[];
+  blogPosts: BlogPost[];
   companyProfile: CompanyProfile;
   seoSettings: SeoSettings;
   aiSettings: AiSettings;
   emailSettings: EmailSettings;
   pageSettings: PageSettings;
+  sitePages: SitePage[]; // New
   lastBackupDate: string | null;
   
   // Auth & Team
@@ -40,11 +42,18 @@ interface GlobalContextType {
   deleteDriver: (id: string) => void;
   addBooking: (booking: Booking) => void;
   updateBookingStatus: (id: string, status: Booking['status']) => void;
+  
+  // Blog Actions
+  addBlogPost: (post: BlogPost) => void;
+  updateBlogPost: (post: BlogPost) => void;
+  deleteBlogPost: (id: string) => void;
+
   updateCompanyProfile: (profile: CompanyProfile) => void;
   updateSeoSettings: (seo: SeoSettings) => void;
   updateAiSettings: (settings: AiSettings) => void;
   updateEmailSettings: (settings: EmailSettings) => void;
   updatePageSettings: (settings: PageSettings) => void;
+  updateSitePage: (page: SitePage) => void; // New
   importData: (data: any) => void;
   loading: boolean;
 }
@@ -58,6 +67,7 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [packages, setPackages] = useState<Package[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   
   // Auth & Admin Data
   const [currentUser, setCurrentUser] = useState<Manager | null>(null);
@@ -65,6 +75,14 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+
+  // Content Pages State
+  const [sitePages, setSitePages] = useState<SitePage[]>([
+    { id: 'home', title: 'Home Page', content: '<h1>Welcome to HolidayPot</h1>', lastUpdated: new Date().toISOString() },
+    { id: 'about', title: 'About Us', content: '<p>Welcome to <strong>HolidayPot</strong>. We started with a simple belief: travel should be about connection.</p>', lastUpdated: new Date().toISOString() },
+    { id: 'terms', title: 'Terms & Conditions', content: '<p>Welcome to HolidayPot. By using our website, you agree to these terms.</p>', lastUpdated: new Date().toISOString() },
+    { id: 'privacy', title: 'Privacy Policy', content: '<p>At HolidayPot, we value your trust and are committed to protecting your personal information.</p>', lastUpdated: new Date().toISOString() }
+  ]);
 
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
     name: 'HolidayPot',
@@ -89,7 +107,12 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     robotsTxtEnabled: true,
     robotsTxtContent: 'User-agent: *\nAllow: /',
     schemaMarkupEnabled: true,
-    analyticsId: 'UA-XXXXX-Y'
+    analyticsId: 'UA-XXXXX-Y',
+    geoRegion: 'IN',
+    enableFaqSchema: true,
+    entityType: 'TravelAgency',
+    authoritativeTopic: 'India Travel & Tourism',
+    knowledgeGraphDesc: 'HolidayPot is a premier travel agency based in India, specializing in curated tour packages, luxury taxi services, and AI-powered travel planning.'
   });
 
   const [aiSettings, setAiSettings] = useState<AiSettings>({
@@ -182,18 +205,51 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             {
                id: 'BK-1002',
                userId: 'u2',
-               itemId: 'd1',
-               itemName: 'Taxi Ride: Mumbai Airport',
-               customerName: 'Sarah Jenkins',
-               customerEmail: 'sarah@example.com',
-               customerPhone: '5551234567',
+               itemId: 'd2',
+               itemName: 'Toyota Innova Crysta (Mumbai)',
+               customerName: 'Amit Patel',
+               customerEmail: 'amit@example.com',
+               customerPhone: '9822012345',
                type: 'Taxi',
-               date: new Date().toISOString(),
-               travelDate: '2024-10-25',
+               date: new Date(Date.now() - 86400000).toISOString(),
+               travelDate: '2024-12-01',
                status: 'Pending',
                totalAmount: 45,
                paid: false,
-               travelers: 1
+               travelers: 4
+            },
+            {
+               id: 'BK-1003',
+               userId: 'u3',
+               itemId: 'ai-plan',
+               itemName: 'Custom AI Trip to Goa',
+               customerName: 'Rahul Verma',
+               customerEmail: 'rahul@example.com',
+               customerPhone: '9988776655',
+               type: 'AI Plan',
+               date: new Date(Date.now() - 172800000).toISOString(),
+               travelDate: '2024-12-10',
+               status: 'Pending',
+               totalAmount: 0,
+               paid: false,
+               travelers: 2,
+               message: 'Need a beachfront villa'
+            },
+            {
+               id: 'BK-1004',
+               userId: 'u4',
+               itemId: 'contact-form',
+               itemName: 'Partnership Inquiry',
+               customerName: 'John Doe',
+               customerEmail: 'john@agency.com',
+               customerPhone: 'N/A',
+               type: 'General',
+               date: new Date(Date.now() - 250000000).toISOString(),
+               status: 'Resolved',
+               totalAmount: 0,
+               paid: false,
+               travelers: 1,
+               message: 'Interested in becoming a local partner.'
             }
           ];
           setBookings(defaultBookings);
@@ -227,16 +283,24 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setCurrentUser(JSON.parse(storedSession));
         }
 
-        // Restore Logs & Managers from local for demo
+        // Restore Logs, Managers, Posts from local for demo
         const storedManagers = localStorage.getItem('holidaypot_managers');
         if (storedManagers) setManagers(JSON.parse(storedManagers));
         
         const storedLogs = localStorage.getItem('holidaypot_logs');
         if (storedLogs) setActivityLogs(JSON.parse(storedLogs));
 
+        const storedPosts = localStorage.getItem('holidaypot_blog_posts');
+        if (storedPosts) setBlogPosts(JSON.parse(storedPosts));
+        else setBlogPosts(MOCK_POSTS);
+
+        const storedPages = localStorage.getItem('holidaypot_site_pages');
+        if (storedPages) setSitePages(JSON.parse(storedPages));
+
       } catch (err) {
         console.error("Supabase connection error, falling back to mocks", err);
         setPackages(POPULAR_PACKAGES);
+        setBlogPosts(MOCK_POSTS);
       } finally {
         setLoading(false);
       }
@@ -355,6 +419,29 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
      logAction('Deleted Manager', 'Manager', id, 'Removed user access');
   };
 
+  // --- Blog CRUD ---
+  
+  const addBlogPost = (post: BlogPost) => {
+    const updated = [post, ...blogPosts];
+    setBlogPosts(updated);
+    localStorage.setItem('holidaypot_blog_posts', JSON.stringify(updated));
+    logAction('Created Post', 'Blog', post.id, post.title);
+  };
+
+  const updateBlogPost = (post: BlogPost) => {
+    const updated = blogPosts.map(p => p.id === post.id ? post : p);
+    setBlogPosts(updated);
+    localStorage.setItem('holidaypot_blog_posts', JSON.stringify(updated));
+    logAction('Updated Post', 'Blog', post.id, post.title);
+  };
+
+  const deleteBlogPost = (id: string) => {
+    const updated = blogPosts.filter(p => p.id !== id);
+    setBlogPosts(updated);
+    localStorage.setItem('holidaypot_blog_posts', JSON.stringify(updated));
+    logAction('Deleted Post', 'Blog', id);
+  };
+
   // --- Actions ---
 
   const addPackage = async (pkg: Package) => {
@@ -457,6 +544,13 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     logAction('Updated Page Settings', 'Settings', '', 'Maintenance/404 settings updated');
   };
 
+  const updateSitePage = (page: SitePage) => {
+    const updatedPages = sitePages.map(p => p.id === page.id ? page : p);
+    setSitePages(updatedPages);
+    localStorage.setItem('holidaypot_site_pages', JSON.stringify(updatedPages));
+    logAction('Updated Content', 'Content', page.id, `Updated ${page.title} page content`);
+  };
+
   const importData = (data: any) => {
     if(data.packages) setPackages(data.packages);
     if(data.drivers) setDrivers(data.drivers);
@@ -465,6 +559,8 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if(data.aiSettings) updateAiSettings(data.aiSettings);
     if(data.emailSettings) updateEmailSettings(data.emailSettings);
     if(data.seoSettings) setSeoSettings(data.seoSettings);
+    if(data.blogPosts) setBlogPosts(data.blogPosts);
+    if(data.sitePages) setSitePages(data.sitePages);
     
     // Set restore time as new backup time
     const now = new Date().toISOString();
@@ -481,11 +577,13 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       packages,
       drivers,
       bookings,
+      blogPosts,
       companyProfile,
       seoSettings,
       aiSettings,
       emailSettings,
       pageSettings,
+      sitePages,
       lastBackupDate,
       currentUser,
       managers,
@@ -506,11 +604,15 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       deleteDriver,
       addBooking,
       updateBookingStatus,
+      addBlogPost,
+      updateBlogPost,
+      deleteBlogPost,
       updateCompanyProfile,
       updateSeoSettings,
       updateAiSettings,
       updateEmailSettings,
       updatePageSettings,
+      updateSitePage,
       importData,
       loading
     }}>

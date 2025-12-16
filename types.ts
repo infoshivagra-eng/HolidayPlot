@@ -127,10 +127,10 @@ export interface Booking {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  type: 'Package' | 'Taxi' | 'AI Plan';
+  type: 'Package' | 'Taxi' | 'AI Plan' | 'General'; // Added General for Contact Form
   date: string; // Booking creation date
   travelDate?: string; // Date of travel
-  status: 'Confirmed' | 'Pending' | 'Cancelled';
+  status: 'Confirmed' | 'Pending' | 'Cancelled' | 'Resolved'; // Added Resolved for enquiries
   totalAmount: number;
   paid: boolean;
   travelers: number;
@@ -160,9 +160,19 @@ export interface SeoSettings {
   // Tech SEO
   sitemapEnabled: boolean;
   robotsTxtEnabled: boolean;
-  robotsTxtContent: string; // NEW
+  robotsTxtContent: string;
   schemaMarkupEnabled: boolean;
   analyticsId: string;
+  // Enhanced GEO & AEO
+  geoRegion?: string; // e.g., IN-KA
+  geoPlacename?: string; // e.g., Bangalore
+  geoPosition?: string; // lat;long
+  enableFaqSchema?: boolean; // AEO
+  twitterHandle?: string;
+  // AI Search Optimization (AEO)
+  entityType?: 'TravelAgency' | 'Organization' | 'LocalBusiness';
+  authoritativeTopic?: string; // e.g. "India Travel"
+  knowledgeGraphDesc?: string; // Factual description for LLMs
 }
 
 export interface AiSettings {
@@ -193,6 +203,14 @@ export interface PageSettings {
   maintenanceMode: boolean;
 }
 
+// --- CONTENT MANAGEMENT ---
+export interface SitePage {
+  id: 'about' | 'terms' | 'privacy' | 'home';
+  title: string;
+  content: string; // HTML allowed
+  lastUpdated: string;
+}
+
 // --- NEW AUTH & LOGGING TYPES ---
 
 export type Permission = 'manage_packages' | 'manage_bookings' | 'manage_drivers' | 'manage_team' | 'manage_settings' | 'view_analytics';
@@ -214,10 +232,36 @@ export interface ActivityLog {
   actorId: string;
   actorName: string;
   action: string; // e.g., "Updated Status", "Deleted Package"
-  targetType: 'Booking' | 'Package' | 'Driver' | 'Settings' | 'Manager';
+  targetType: 'Booking' | 'Package' | 'Driver' | 'Settings' | 'Manager' | 'Blog' | 'Content';
   targetId?: string;
   details: string;
   timestamp: string;
   previousData?: any; // For revert functionality
   isReverted?: boolean;
+}
+
+// --- BLOG TYPES ---
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string; // HTML
+  image: string;
+  author: string;
+  date: string;
+  tags: string[];
+  status: 'Published' | 'Draft';
+  // Post specific SEO
+  seoTitle?: string;
+  seoDescription?: string;
+  geoFocus?: string; // e.g., "Kerala, India"
+  // Rich Content
+  faq?: FaqItem[];
+  gallery?: string[]; // URLs
 }

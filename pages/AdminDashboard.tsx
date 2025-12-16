@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, LayoutDashboard, BarChart3, Package, Calendar, Car, Settings, Lock, Users, ScrollText, UserCircle, X, Camera } from 'lucide-react';
+import { LogOut, LayoutDashboard, BarChart3, Package, Calendar, Car, Settings, Lock, Users, ScrollText, UserCircle, X, Camera, BookOpen, GitBranch, HelpCircle } from 'lucide-react';
 import { useGlobal } from '../GlobalContext';
 import AdminOverview from './admin/AdminOverview';
 import AdminAnalytics from './admin/AdminAnalytics';
@@ -10,6 +10,9 @@ import AdminDrivers from './admin/AdminDrivers';
 import AdminSettings from './admin/AdminSettings';
 import AdminManagers from './admin/AdminManagers';
 import AdminLogs from './admin/AdminLogs';
+import AdminBlog from './admin/AdminBlog';
+import AdminDocs from './admin/AdminDocs';
+import AdminChangelog from './admin/AdminChangelog';
 import { Manager } from '../types';
 
 const AdminDashboard: React.FC = () => {
@@ -21,7 +24,7 @@ const AdminDashboard: React.FC = () => {
   const [loginError, setLoginError] = useState('');
   
   // UI State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'packages' | 'enquiries' | 'drivers' | 'settings' | 'team' | 'logs'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'packages' | 'enquiries' | 'drivers' | 'settings' | 'team' | 'logs' | 'blog' | 'docs' | 'changelog'>('dashboard');
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Profile Edit State
@@ -97,7 +100,10 @@ const AdminDashboard: React.FC = () => {
       case 'drivers': return hasPermission('manage_drivers') ? <AdminDrivers /> : <div className="p-8 text-center text-gray-500">Access Denied</div>;
       case 'settings': return hasPermission('manage_settings') ? <AdminSettings /> : <div className="p-8 text-center text-gray-500">Access Denied</div>;
       case 'team': return hasPermission('manage_team') ? <AdminManagers /> : <div className="p-8 text-center text-gray-500">Access Denied</div>;
+      case 'blog': return hasPermission('manage_packages') ? <AdminBlog /> : <div className="p-8 text-center text-gray-500">Access Denied</div>;
       case 'logs': return <AdminLogs />;
+      case 'docs': return <AdminDocs />;
+      case 'changelog': return <AdminChangelog />;
       default: return <AdminOverview setActiveTab={setActiveTab} />;
     }
   };
@@ -108,8 +114,9 @@ const AdminDashboard: React.FC = () => {
     { id: 'packages', label: 'Packages', icon: Package, perm: 'manage_packages' },
     { id: 'enquiries', label: 'Enquiries', icon: Calendar, perm: 'manage_bookings' },
     { id: 'drivers', label: 'Drivers', icon: Car, perm: 'manage_drivers' },
+    { id: 'blog', label: 'Blog', icon: BookOpen, perm: 'manage_packages' },
     { id: 'team', label: 'Team', icon: Users, perm: 'manage_team' },
-    { id: 'logs', label: 'Logs', icon: ScrollText, perm: 'manage_team' }, // Logs usually restrict to admins
+    { id: 'logs', label: 'Logs', icon: ScrollText, perm: 'manage_team' },
     { id: 'settings', label: 'Settings', icon: Settings, perm: 'manage_settings' },
   ];
 
@@ -139,6 +146,22 @@ const AdminDashboard: React.FC = () => {
                    <item.icon size={18} /> {item.label}
                 </button>
              ))}
+             
+             <div className="pt-4 mt-4 border-t border-gray-100">
+                <p className="px-4 text-xs font-bold text-gray-400 uppercase mb-2">System</p>
+                <button
+                   onClick={() => setActiveTab('docs')}
+                   className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === 'docs' ? 'text-brand-blue bg-blue-50' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                   <HelpCircle size={18} /> Guide
+                </button>
+                <button
+                   onClick={() => setActiveTab('changelog')}
+                   className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === 'changelog' ? 'text-brand-blue bg-blue-50' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                   <GitBranch size={18} /> Updates
+                </button>
+             </div>
           </nav>
 
           <div className="p-4 border-t border-gray-100 space-y-2">
