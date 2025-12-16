@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Package, Driver, Booking, CompanyProfile, SeoSettings, AiSettings, PageSettings, EmailSettings } from './types';
-import { POPULAR_PACKAGES, MOCK_DRIVERS, MOCK_RIDES } from './constants';
+import { Package, Driver, Booking, CompanyProfile, SeoSettings, AiSettings, PageSettings, EmailSettings, Manager, ActivityLog, Permission } from './types';
+import { POPULAR_PACKAGES, MOCK_DRIVERS, MOCK_RIDES, MOCK_MANAGERS } from './constants';
 import { supabase } from './lib/supabaseClient';
 
 interface GlobalContextType {
@@ -14,6 +14,24 @@ interface GlobalContextType {
   emailSettings: EmailSettings;
   pageSettings: PageSettings;
   lastBackupDate: string | null;
+  
+  // Auth & Team
+  currentUser: Manager | null;
+  managers: Manager[];
+  activityLogs: ActivityLog[];
+  login: (username: string, pass: string) => Promise<boolean>;
+  logout: () => void;
+  updateProfile: (data: Partial<Manager>) => void;
+  
+  // Team Actions
+  addManager: (manager: Manager) => void;
+  updateManager: (manager: Manager) => void;
+  deleteManager: (id: string) => void;
+
+  // Logs
+  logAction: (action: string, targetType: ActivityLog['targetType'], targetId?: string, details?: string, previousData?: any) => void;
+  revertAction: (logId: string) => void;
+
   addPackage: (pkg: Package) => void;
   updatePackage: (pkg: Package) => void;
   deletePackage: (id: string) => void;
@@ -35,9 +53,17 @@ const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
+  
+  // App Data
   const [packages, setPackages] = useState<Package[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  
+  // Auth & Admin Data
+  const [currentUser, setCurrentUser] = useState<Manager | null>(null);
+  const [managers, setManagers] = useState<Manager[]>(MOCK_MANAGERS);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
 
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
@@ -191,10 +217,22 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         const storedEmail = localStorage.getItem('holidaypot_email_settings');
         if (storedEmail) setEmailSettings(JSON.parse(storedEmail));
-
         
         const storedBackup = localStorage.getItem('holidaypot_last_backup');
         if (storedBackup) setLastBackupDate(storedBackup);
+        
+        // Restore Session
+        const storedSession = localStorage.getItem('holidaypot_admin_session');
+        if (storedSession) {
+            setCurrentUser(JSON.parse(storedSession));
+        }
+
+        // Restore Logs & Managers from local for demo
+        const storedManagers = localStorage.getItem('holidaypot_managers');
+        if (storedManagers) setManagers(JSON.parse(storedManagers));
+        
+        const storedLogs = localStorage.getItem('holidaypot_logs');
+        if (storedLogs) setActivityLogs(JSON.parse(storedLogs));
 
       } catch (err) {
         console.error("Supabase connection error, falling back to mocks", err);
@@ -207,16 +245,128 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     fetchData();
   }, []);
 
+  // --- Auth & Logging ---
+
+  const login = async (username: string, pass: string): Promise<boolean> => {
+     // Check hardcoded super admin override via localstorage first
+     const storedPwd = localStorage.getItem('holidayPot_admin_pwd') || 'admin';
+     if (username === 'admin' && pass === storedPwd) {
+        const adminUser = managers.find(m => m.username === 'admin') || MOCK_MANAGERS[0];
+        setCurrentUser(adminUser);
+        localStorage.setItem('holidaypot_admin_session', JSON.stringify(adminUser));
+        logAction('Logged In', 'Manager', adminUser.id, 'Session Started');
+        return true;
+     }
+
+     // Check other managers
+     const foundManager = managers.find(m => m.username === username && m.password === pass);
+     if (foundManager) {
+        setCurrentUser(foundManager);
+        localStorage.setItem('holidaypot_admin_session', JSON.stringify(foundManager));
+        logAction('Logged In', 'Manager', foundManager.id, 'Session Started');
+        return true;
+     }
+     
+     return false;
+  };
+
+  const logout = () => {
+    if (currentUser) logAction('Logged Out', 'Manager', currentUser.id, 'Session Ended');
+    setCurrentUser(null);
+    localStorage.removeItem('holidaypot_admin_session');
+  };
+
+  const updateProfile = (data: Partial<Manager>) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, ...data };
+    setCurrentUser(updated);
+    setManagers(prev => prev.map(m => m.id === updated.id ? updated : m));
+    localStorage.setItem('holidaypot_admin_session', JSON.stringify(updated));
+    // Persist managers logic would go here
+  };
+
+  const logAction = (
+     action: string, 
+     targetType: ActivityLog['targetType'], 
+     targetId: string = '', 
+     details: string = '',
+     previousData?: any
+  ) => {
+     const newLog: ActivityLog = {
+         id: `log_${Date.now()}`,
+         actorId: currentUser?.id || 'system',
+         actorName: currentUser?.name || 'System',
+         action,
+         targetType,
+         targetId,
+         details,
+         timestamp: new Date().toISOString(),
+         previousData
+     };
+     const updatedLogs = [newLog, ...activityLogs];
+     setActivityLogs(updatedLogs);
+     localStorage.setItem('holidaypot_logs', JSON.stringify(updatedLogs));
+  };
+
+  const revertAction = (logId: string) => {
+     const logIndex = activityLogs.findIndex(l => l.id === logId);
+     if (logIndex === -1) return;
+     const log = activityLogs[logIndex];
+     
+     if (log.isReverted) return;
+
+     // Specific Logic for Enquiries/Bookings Status
+     if (log.targetType === 'Booking' && log.action.includes('Status') && log.previousData) {
+         setBookings(prev => prev.map(b => b.id === log.targetId ? { ...b, status: log.previousData } : b));
+         // Mark as reverted
+         const newLogs = [...activityLogs];
+         newLogs[logIndex] = { ...log, isReverted: true };
+         setActivityLogs(newLogs);
+         localStorage.setItem('holidaypot_logs', JSON.stringify(newLogs));
+         
+         // Add a new log for the revert itself
+         logAction('Reverted Action', 'Booking', log.targetId, `Reverted status change based on log ${logId}`);
+         alert(`Successfully reverted booking ${log.targetId} to ${log.previousData}`);
+     } else {
+         alert("This action cannot be automatically reverted.");
+     }
+  };
+
+  // --- Manager CRUD ---
+
+  const addManager = (manager: Manager) => {
+     const updated = [...managers, manager];
+     setManagers(updated);
+     localStorage.setItem('holidaypot_managers', JSON.stringify(updated));
+     logAction('Created Manager', 'Manager', manager.id, `Created ${manager.username}`);
+  };
+
+  const updateManager = (manager: Manager) => {
+     const updated = managers.map(m => m.id === manager.id ? manager : m);
+     setManagers(updated);
+     localStorage.setItem('holidaypot_managers', JSON.stringify(updated));
+     logAction('Updated Manager', 'Manager', manager.id, `Updated profile/permissions for ${manager.username}`);
+  };
+
+  const deleteManager = (id: string) => {
+     const updated = managers.filter(m => m.id !== id);
+     setManagers(updated);
+     localStorage.setItem('holidaypot_managers', JSON.stringify(updated));
+     logAction('Deleted Manager', 'Manager', id, 'Removed user access');
+  };
+
   // --- Actions ---
 
   const addPackage = async (pkg: Package) => {
     setPackages(prev => [pkg, ...prev]);
     await supabase.from('packages').insert(pkg);
+    logAction('Created Package', 'Package', pkg.id, pkg.name);
   };
 
   const updatePackage = async (updatedPkg: Package) => {
     setPackages(prev => prev.map(p => p.id === updatedPkg.id ? updatedPkg : p));
     await supabase.from('packages').update(updatedPkg).eq('id', updatedPkg.id);
+    logAction('Updated Package', 'Package', updatedPkg.id, updatedPkg.name);
   };
 
   const deletePackage = async (id: string) => {
@@ -226,6 +376,7 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return;
     }
     setPackages(prev => prev.filter(p => p.id !== id));
+    logAction('Deleted Package', 'Package', id);
     try {
         await supabase.from('packages').delete().eq('id', id);
     } catch (e) { console.error(e); }
@@ -234,26 +385,36 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const addDriver = async (driver: Driver) => {
     setDrivers(prev => [driver, ...prev]);
     await supabase.from('drivers').insert(driver);
+    logAction('Registered Driver', 'Driver', driver.id, driver.name);
   };
 
   const updateDriverStatus = async (id: string, status: Driver['status']) => {
     setDrivers(prev => prev.map(d => d.id === id ? { ...d, status } : d));
     await supabase.from('drivers').update({ status }).eq('id', id);
+    logAction('Updated Driver Status', 'Driver', id, `Status: ${status}`);
   };
 
   const deleteDriver = async (id: string) => {
     setDrivers(prev => prev.filter(d => d.id !== id));
     await supabase.from('drivers').delete().eq('id', id);
+    logAction('Deleted Driver', 'Driver', id);
   };
 
   const addBooking = async (booking: Booking) => {
     setBookings(prev => [booking, ...prev]);
     await supabase.from('bookings').insert(booking);
+    // No log action needed for public booking, or log as system
   };
 
   const updateBookingStatus = async (id: string, status: Booking['status']) => {
+    // Capture previous for revert
+    const prevBooking = bookings.find(b => b.id === id);
+    const prevStatus = prevBooking?.status;
+
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
     await supabase.from('bookings').update({ status }).eq('id', id);
+    
+    logAction('Updated Booking Status', 'Booking', id, `Changed from ${prevStatus} to ${status}`, prevStatus);
   };
 
   const updateCompanyProfile = async (profile: CompanyProfile) => {
@@ -264,6 +425,7 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } else {
        await supabase.from('company_profile').insert(profile);
     }
+    logAction('Updated Profile', 'Settings', '', 'Company details updated');
   };
 
   const updateSeoSettings = async (seo: SeoSettings) => {
@@ -274,21 +436,25 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } else {
        await supabase.from('seo_settings').insert(seo);
     }
+    logAction('Updated SEO', 'Settings', '', 'SEO meta tags updated');
   };
 
   const updateAiSettings = (settings: AiSettings) => {
     setAiSettings(settings);
     localStorage.setItem('holidaypot_ai_settings', JSON.stringify(settings));
+    logAction('Updated AI Config', 'Settings', '', 'AI Provider/Key updated');
   };
 
   const updateEmailSettings = (settings: EmailSettings) => {
     setEmailSettings(settings);
     localStorage.setItem('holidaypot_email_settings', JSON.stringify(settings));
+    logAction('Updated Email Config', 'Settings', '', 'Notification preferences updated');
   };
 
   const updatePageSettings = (settings: PageSettings) => {
     setPageSettings(settings);
     localStorage.setItem('holidaypot_page_settings', JSON.stringify(settings));
+    logAction('Updated Page Settings', 'Settings', '', 'Maintenance/404 settings updated');
   };
 
   const importData = (data: any) => {
@@ -304,6 +470,8 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const now = new Date().toISOString();
     setLastBackupDate(now);
     localStorage.setItem('holidaypot_last_backup', now);
+    
+    logAction('System Restore', 'Settings', '', 'Data imported from backup');
 
     alert("Data imported to local state. Note: This does not automatically sync deeply to the database in this demo to prevent corruption.");
   };
@@ -319,6 +487,17 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       emailSettings,
       pageSettings,
       lastBackupDate,
+      currentUser,
+      managers,
+      activityLogs,
+      login,
+      logout,
+      updateProfile,
+      addManager,
+      updateManager,
+      deleteManager,
+      logAction,
+      revertAction,
       addPackage,
       updatePackage,
       deletePackage,

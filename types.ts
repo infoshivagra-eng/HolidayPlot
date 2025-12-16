@@ -192,3 +192,32 @@ export interface PageSettings {
   };
   maintenanceMode: boolean;
 }
+
+// --- NEW AUTH & LOGGING TYPES ---
+
+export type Permission = 'manage_packages' | 'manage_bookings' | 'manage_drivers' | 'manage_team' | 'manage_settings' | 'view_analytics';
+
+export interface Manager {
+  id: string;
+  name: string;
+  username: string;
+  password?: string; // In real app, this is hashed. Here simplistic.
+  role: 'Super Admin' | 'Manager';
+  email: string;
+  avatar: string;
+  permissions: Permission[];
+  lastLogin?: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  actorId: string;
+  actorName: string;
+  action: string; // e.g., "Updated Status", "Deleted Package"
+  targetType: 'Booking' | 'Package' | 'Driver' | 'Settings' | 'Manager';
+  targetId?: string;
+  details: string;
+  timestamp: string;
+  previousData?: any; // For revert functionality
+  isReverted?: boolean;
+}

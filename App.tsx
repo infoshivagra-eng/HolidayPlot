@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { HashRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
-import { Menu, X, Facebook, Twitter, Instagram, MapPin, Phone, Mail, Sparkles, RefreshCw, Loader2, FileText } from 'lucide-react';
+import { Menu, X, Facebook, Twitter, Instagram, MapPin, Phone, Mail, Sparkles, RefreshCw, Loader2, FileText, LayoutDashboard, LogOut, User } from 'lucide-react';
 import Home from './pages/Home';
 import PackageList from './pages/PackageList';
 import PackageDetail from './pages/PackageDetail';
@@ -134,7 +134,7 @@ const NotFound: React.FC = () => {
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
-  const { loading, pageSettings } = useGlobal();
+  const { loading, pageSettings, currentUser, logout } = useGlobal();
 
   // Check if current route is admin to hide footer
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -209,12 +209,35 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               
               <CurrencyToggle />
 
-              <Link
-                to="/packages"
-                className="bg-brand-orange text-white px-6 py-2.5 rounded-full font-medium hover:bg-orange-600 transition-shadow shadow-md hover:shadow-lg text-sm"
-              >
-                Book Now
-              </Link>
+              {currentUser ? (
+                <div className="flex items-center gap-4 border-l border-gray-200 pl-4">
+                   <Link to="/admin" className="flex items-center gap-2 text-sm font-bold text-gray-700 hover:text-brand-blue transition-colors">
+                      <LayoutDashboard size={18} /> Dashboard
+                   </Link>
+                   
+                   <div className="flex items-center gap-2 bg-gray-50 rounded-full pr-1 pl-3 py-1 border border-gray-200">
+                      <div className="text-xs text-right hidden lg:block">
+                         <div className="font-bold text-gray-900">{currentUser.name}</div>
+                         <div className="text-[10px] text-gray-500 uppercase">{currentUser.role}</div>
+                      </div>
+                      <img src={currentUser.avatar} alt="User" className="w-8 h-8 rounded-full border border-white shadow-sm object-cover"/>
+                      <button 
+                        onClick={logout} 
+                        className="ml-1 p-1.5 bg-white text-red-500 rounded-full hover:bg-red-50 transition-colors shadow-sm" 
+                        title="Logout"
+                      >
+                        <LogOut size={14}/>
+                      </button>
+                   </div>
+                </div>
+              ) : (
+                <Link
+                  to="/packages"
+                  className="bg-brand-orange text-white px-6 py-2.5 rounded-full font-medium hover:bg-orange-600 transition-shadow shadow-md hover:shadow-lg text-sm"
+                >
+                  Book Now
+                </Link>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -234,6 +257,20 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {isMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 h-screen overflow-y-auto pb-20">
             <div className="px-4 pt-4 pb-6 space-y-3">
+              {/* User Profile for Mobile */}
+              {currentUser && (
+                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-4 border border-gray-100">
+                    <img src={currentUser.avatar} alt="User" className="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover"/>
+                    <div className="flex-1">
+                       <div className="font-bold text-gray-900">{currentUser.name}</div>
+                       <div className="text-xs text-brand-blue font-bold uppercase">{currentUser.role}</div>
+                    </div>
+                    <button onClick={logout} className="p-2 text-red-500 bg-white rounded-lg shadow-sm">
+                       <LogOut size={20}/>
+                    </button>
+                 </div>
+              )}
+
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
@@ -251,13 +288,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   </div>
                 </Link>
               ))}
-              <Link
-                to="/packages"
-                onClick={() => setIsMenuOpen(false)}
-                className="block w-full text-center mt-6 bg-brand-orange text-white px-4 py-4 rounded-xl font-bold shadow-md text-lg"
-              >
-                Find Packages
-              </Link>
+
+              {currentUser ? (
+                 <Link
+                    to="/admin"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="block w-full text-center mt-6 bg-brand-blue text-white px-4 py-4 rounded-xl font-bold shadow-md text-lg flex items-center justify-center gap-2"
+                 >
+                    <LayoutDashboard size={20}/> Go to Dashboard
+                 </Link>
+              ) : (
+                 <Link
+                    to="/packages"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="block w-full text-center mt-6 bg-brand-orange text-white px-4 py-4 rounded-xl font-bold shadow-md text-lg"
+                 >
+                    Find Packages
+                 </Link>
+              )}
             </div>
           </div>
         )}

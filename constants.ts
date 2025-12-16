@@ -1,5 +1,5 @@
 
-import { Package, Driver, RideRequest } from './types';
+import { Package, Driver, RideRequest, Manager } from './types';
 
 export const POPULAR_PACKAGES: Package[] = [
   {
@@ -328,5 +328,29 @@ export const TESTIMONIALS = [
     text: "Used the AI Planner for a last minute Goa trip. It gave me the perfect itinerary under budget.",
     location: "Bangalore",
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80"
+  }
+];
+
+export const MOCK_MANAGERS: Manager[] = [
+  {
+    id: 'm1',
+    name: 'Admin User',
+    username: 'admin',
+    email: 'admin@holidaypot.in',
+    role: 'Super Admin',
+    permissions: ['manage_packages', 'manage_bookings', 'manage_drivers', 'manage_team', 'manage_settings', 'view_analytics'],
+    avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=0EA5E9&color=fff',
+    lastLogin: new Date().toISOString()
+  },
+  {
+    id: 'm2',
+    name: 'Sarah Manager',
+    username: 'sarah',
+    email: 'sarah@holidaypot.in',
+    password: '123', // Demo only
+    role: 'Manager',
+    permissions: ['manage_bookings', 'view_analytics'],
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80',
+    lastLogin: new Date(Date.now() - 86400000).toISOString()
   }
 ];

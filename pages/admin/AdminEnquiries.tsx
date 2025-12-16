@@ -115,12 +115,15 @@ const AdminEnquiries: React.FC = () => {
                     {formatPrice(booking.totalAmount)}
                   </td>
                   <td className="p-4 text-right">
-                    {booking.status === 'Pending' && (
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => updateBookingStatus(booking.id, 'Confirmed')} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Confirm"><CheckCircle size={18}/></button>
-                        <button onClick={() => updateBookingStatus(booking.id, 'Cancelled')} className="p-1 text-red-500 hover:bg-red-50 rounded" title="Cancel"><XCircle size={18}/></button>
-                      </div>
-                    )}
+                    {/* Only show actions if not already in that state */}
+                    <div className="flex justify-end gap-2">
+                        {booking.status !== 'Confirmed' && (
+                            <button onClick={() => updateBookingStatus(booking.id, 'Confirmed')} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Confirm"><CheckCircle size={18}/></button>
+                        )}
+                        {booking.status !== 'Cancelled' && (
+                            <button onClick={() => updateBookingStatus(booking.id, 'Cancelled')} className="p-1 text-red-500 hover:bg-red-50 rounded" title="Cancel"><XCircle size={18}/></button>
+                        )}
+                    </div>
                   </td>
                 </tr>
               ))}
