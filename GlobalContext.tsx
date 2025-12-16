@@ -14,7 +14,7 @@ interface GlobalContextType {
   aiSettings: AiSettings;
   emailSettings: EmailSettings;
   pageSettings: PageSettings;
-  sitePages: SitePage[]; // New
+  sitePages: SitePage[]; 
   lastBackupDate: string | null;
   
   // Auth & Team
@@ -53,16 +53,14 @@ interface GlobalContextType {
   updateAiSettings: (settings: AiSettings) => void;
   updateEmailSettings: (settings: EmailSettings) => void;
   updatePageSettings: (settings: PageSettings) => void;
-  updateSitePage: (page: SitePage) => void; // New
+  updateSitePage: (page: SitePage) => void;
   importData: (data: any) => void;
   loading: boolean;
 
   // SaaS Tenant Management
   currentTenant: Tenant | null;
   featureFlags: string[];
-  needsSetup: boolean;
   initializeTenantSession: (tenant: Tenant, manager: Manager) => Promise<void>;
-  completeTenantSetup: (dbUrl: string, dbKey: string, aiKey?: string) => Promise<void>;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
@@ -84,7 +82,6 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // SaaS Data
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [featureFlags, setFeatureFlags] = useState<string[]>([]);
-  const [needsSetup, setNeedsSetup] = useState(false);
 
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
 
@@ -321,7 +318,6 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             
             setCurrentTenant(t);
             setFeatureFlags(flags);
-            setNeedsSetup(!t.db_url || !t.db_key);
         }
 
       } catch (err) {
@@ -372,8 +368,6 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (currentUser) logAction('Logged Out', 'Manager', currentUser.id, 'Session Ended');
     setCurrentUser(null);
     localStorage.removeItem('holidaypot_admin_session');
-    // Also clear tenant session if applicable
-    // localStorage.removeItem('holidaypot_tenant_session'); // Maybe keep for UX
   };
 
   const updateProfile = (data: Partial<Manager>) => {
@@ -382,7 +376,6 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setCurrentUser(updated);
     setManagers(prev => prev.map(m => m.id === updated.id ? updated : m));
     localStorage.setItem('holidaypot_admin_session', JSON.stringify(updated));
-    // Persist managers logic would go here
   };
 
   const logAction = (
@@ -622,34 +615,6 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     else if (tenant.plan_id === 'pro') flags.push('packages', 'bookings', 'drivers', 'blog', 'analytics');
     else if (tenant.plan_id === 'enterprise') flags.push('packages', 'bookings', 'drivers', 'blog', 'analytics', 'ai_planner', 'white_label');
     setFeatureFlags(flags);
-
-    // Check Setup
-    if (!tenant.db_url || !tenant.db_key) {
-        setNeedsSetup(true);
-    } else {
-        setNeedsSetup(false);
-        if (typeof window !== 'undefined') {
-             localStorage.setItem('holidaypot_supabase_url', tenant.db_url);
-             localStorage.setItem('holidaypot_supabase_key', tenant.db_key);
-        }
-    }
-  };
-
-  const completeTenantSetup = async (dbUrl: string, dbKey: string, aiKey?: string) => {
-      if (!currentTenant) return;
-      const updated = { ...currentTenant, db_url: dbUrl, db_key: dbKey, ai_key: aiKey };
-      setCurrentTenant(updated);
-      setNeedsSetup(false);
-      localStorage.setItem('holidaypot_tenant_session', JSON.stringify(updated));
-      
-      localStorage.setItem('holidaypot_supabase_url', dbUrl);
-      localStorage.setItem('holidaypot_supabase_key', dbKey);
-      
-      if (aiKey) {
-          const newAi = { ...aiSettings, primaryApiKey: aiKey };
-          setAiSettings(newAi);
-          localStorage.setItem('holidaypot_ai_settings', JSON.stringify(newAi));
-      }
   };
 
   return (
@@ -697,9 +662,7 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       loading,
       currentTenant,
       featureFlags,
-      needsSetup,
-      initializeTenantSession,
-      completeTenantSetup
+      initializeTenantSession
     }}>
       {children}
     </GlobalContext.Provider>

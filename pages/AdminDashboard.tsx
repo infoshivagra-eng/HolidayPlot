@@ -8,16 +8,13 @@ import { Tenant } from '../types';
 import TenantDashboard from './TenantDashboard';
 
 const AdminDashboard: React.FC = () => {
-  const { currentUser, currentTenant, logout, initializeTenantSession, completeTenantSetup, needsSetup, loading: globalLoading } = useGlobal();
+  const { currentUser, currentTenant, logout, initializeTenantSession, loading: globalLoading } = useGlobal();
   
   // Login State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Setup Wizard State
-  const [setupForm, setSetupForm] = useState({ db_url: '', db_key: '', ai_key: '' });
 
   // --- AUTH HANDLER ---
   const handleLogin = async (e: React.FormEvent) => {
@@ -67,7 +64,7 @@ const AdminDashboard: React.FC = () => {
                     admin_email: 'admin@holidaypot.in',
                     status: 'active',
                     plan_id: 'enterprise',
-                    // Empty credentials to force setup or rely on env variables
+                    // Default to empty strings to avoid setup prompt
                     db_url: '', 
                     db_key: ''
                 };
@@ -97,56 +94,10 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleSetupSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      await completeTenantSetup(setupForm.db_url, setupForm.db_key, setupForm.ai_key);
-  };
-
   // --- RENDER LOGIC ---
 
   // If authenticated
   if (currentUser) {
-      if (needsSetup) {
-          return (
-              <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row">
-                      <div className="bg-brand-blue p-8 text-white md:w-1/3 flex flex-col justify-center">
-                          <Database size={48} className="mb-6 opacity-80"/>
-                          <h2 className="text-2xl font-bold mb-2">One-Time Setup</h2>
-                          <p className="text-blue-100 text-sm leading-relaxed">
-                              Welcome, {currentTenant?.business_name}! To activate your dashboard, please connect your database and AI services.
-                          </p>
-                      </div>
-                      <div className="p-8 md:w-2/3">
-                          <div className="flex justify-between items-center mb-6">
-                              <h3 className="text-xl font-bold text-gray-900">Configuration</h3>
-                              <Link to="/schema" target="_blank" className="text-xs font-bold text-brand-blue hover:underline flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full">
-                                  <ExternalLink size={12}/> Get SQL Script
-                              </Link>
-                          </div>
-                          <form onSubmit={handleSetupSubmit} className="space-y-5">
-                              <div>
-                                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Supabase Project URL</label>
-                                  <input required type="text" className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-blue" value={setupForm.db_url} onChange={e => setSetupForm({...setupForm, db_url: e.target.value})} />
-                              </div>
-                              <div>
-                                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Supabase Anon Key</label>
-                                  <input required type="password" className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-blue" value={setupForm.db_key} onChange={e => setSetupForm({...setupForm, db_key: e.target.value})} />
-                              </div>
-                              <div>
-                                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">AI API Key (Optional)</label>
-                                  <input type="password" className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand-blue" value={setupForm.ai_key} onChange={e => setSetupForm({...setupForm, ai_key: e.target.value})} placeholder="sk-..." />
-                              </div>
-                              <button type="submit" disabled={globalLoading} className="w-full bg-brand-blue text-white font-bold py-3 rounded-xl hover:bg-sky-600 shadow-lg flex items-center justify-center gap-2">
-                                  {globalLoading ? 'Connecting...' : <>Complete Setup <ArrowRight size={18}/></>}
-                              </button>
-                              <button type="button" onClick={logout} className="w-full text-gray-400 text-sm hover:text-gray-600">Cancel & Logout</button>
-                          </form>
-                      </div>
-                  </div>
-              </div>
-          );
-      }
       return <TenantDashboard />;
   }
 
