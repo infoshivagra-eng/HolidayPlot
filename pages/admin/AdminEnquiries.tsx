@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Filter, Download, CheckCircle, XCircle, Clock, Package, Car, Sparkles, MessageSquare, LayoutGrid } from 'lucide-react';
+import { Filter, CheckCircle, XCircle, Clock, Package, Car, Sparkles, MessageSquare, LayoutGrid, FileSpreadsheet } from 'lucide-react';
 import { useGlobal } from '../../GlobalContext';
 import { useCurrency } from '../../CurrencyContext';
+import * as XLSX from 'xlsx';
 
 const AdminEnquiries: React.FC = () => {
   const { bookings, updateBookingStatus } = useGlobal();
@@ -11,9 +12,9 @@ const AdminEnquiries: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('All');
 
   const tabs = [
-    { id: 'All', label: 'All Enquiries', icon: LayoutGrid },
+    { id: 'All', label: 'All', icon: LayoutGrid },
     { id: 'Package', label: 'Packages', icon: Package },
-    { id: 'Taxi', label: 'Taxi Bookings', icon: Car },
+    { id: 'Taxi', label: 'Taxi', icon: Car },
     { id: 'AI Plan', label: 'AI Plans', icon: Sparkles },
     { id: 'General', label: 'General', icon: MessageSquare },
   ];
@@ -24,62 +25,83 @@ const AdminEnquiries: React.FC = () => {
       return matchType && matchStatus;
   });
 
-  const exportToCSV = () => {
-    if(bookings.length === 0) return;
-    const headers = ["Ref ID", "Date", "Customer", "Phone", "Email", "Type", "Item", "Status", "Amount"];
-    const csvRows = bookings.map(b => [
-        b.id, new Date(b.date).toLocaleDateString(), `"${b.customerName}"`, b.customerPhone, b.customerEmail, b.type, `"${b.itemName}"`, b.status, b.totalAmount
-    ]);
-    const csvContent = [headers.join(','), ...csvRows.map(row => row.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `enquiries_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const exportToExcel = () => {
+    if (filteredBookings.length === 0) {
+        alert("No data available to export.");
+        return;
+    }
+    
+    // Format data for Excel
+    const data = filteredBookings.map(b => ({
+        "Ref ID": b.id,
+        "Date": new Date(b.date).toLocaleDateString(),
+        "Customer Name": b.customerName,
+        "Contact Phone": b.customerPhone,
+        "Contact Email": b.customerEmail,
+        "Type": b.type,
+        "Item / Service": b.itemName,
+        "Travelers": b.travelers,
+        "Travel Date": b.travelDate ? new Date(b.travelDate).toLocaleDateString() : 'N/A',
+        "Status": b.status,
+        "Total Amount": b.totalAmount,
+        "Payment Status": b.paid ? 'Paid' : 'Unpaid',
+        "Notes": b.message || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Enquiries");
+    
+    // Basic Column Widths
+    const wscols = [
+        {wch: 15}, {wch: 12}, {wch: 20}, {wch: 15}, {wch: 25}, {wch: 10}, {wch: 30}, {wch: 10}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 40}
+    ];
+    worksheet['!cols'] = wscols;
+
+    XLSX.writeFile(workbook, `HolidayPot_Bookings_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Enquiries & Bookings</h1>
-        <button onClick={exportToCSV} className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
-          <Download size={16}/> Export CSV
-        </button>
-      </div>
-
-      {/* Sub Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-1">
-        {tabs.map(tab => (
-            <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-all ${
-                    activeTab === tab.id 
-                    ? 'border-brand-blue text-brand-blue bg-blue-50/50 rounded-t-lg' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-t-lg'
-                }`}
-            >
-                <tab.icon size={16} />
-                {tab.label}
-                <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {tab.id === 'All' ? bookings.length : bookings.filter(b => b.type === tab.id).length}
-                </span>
+        <div className="flex gap-2">
+            <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-600 text-white border border-green-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors shadow-sm">
+                <FileSpreadsheet size={16}/> Export Excel
             </button>
-        ))}
+        </div>
       </div>
 
-      {/* Status Filter */}
-      <div className="flex justify-end">
-        <div className="bg-white px-3 py-2 rounded-lg border border-gray-200 flex items-center gap-2 shadow-sm">
+      {/* Tabs & Filter Bar - Inline */}
+      <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4 border-b border-gray-200 pb-1">
+        <div className="flex flex-wrap gap-2">
+            {tabs.map(tab => (
+                <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all ${
+                        activeTab === tab.id 
+                        ? 'border-brand-blue text-brand-blue bg-blue-50/50 rounded-t-lg' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-t-lg'
+                    }`}
+                >
+                    <tab.icon size={16} />
+                    {tab.label}
+                    <span className={`ml-1 text-xs px-2 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {tab.id === 'All' ? bookings.length : bookings.filter(b => b.type === tab.id).length}
+                    </span>
+                </button>
+            ))}
+        </div>
+
+        {/* Inline Filter */}
+        <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 flex items-center gap-2 shadow-sm mb-1">
+           <Filter size={14} className="text-gray-400"/>
            <div className={`w-2 h-2 rounded-full ${filterStatus === 'All' ? 'bg-gray-400' : filterStatus === 'Confirmed' ? 'bg-green-500' : 'bg-orange-500'}`}></div>
            <select 
              value={filterStatus} 
              onChange={(e) => setFilterStatus(e.target.value)}
-             className="bg-transparent outline-none text-sm font-medium cursor-pointer"
+             className="bg-transparent outline-none text-xs font-bold text-gray-700 cursor-pointer uppercase tracking-wide"
            >
              <option value="All">All Status</option>
              <option value="Confirmed">Confirmed</option>
