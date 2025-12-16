@@ -335,25 +335,27 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // --- Auth & Logging ---
 
   const login = async (username: string, pass: string): Promise<boolean> => {
-     // Default password logic for ALL users if specific password isn't matched
      const DEFAULT_PASS = 'admin123';
      
-     // Check hardcoded super admin override via localstorage first
-     const storedPwd = localStorage.getItem('holidayPot_admin_pwd') || DEFAULT_PASS;
-     
-     if (username === 'admin' && (pass === storedPwd || pass === DEFAULT_PASS)) {
-        const adminUser = managers.find(m => m.username === 'admin') || MOCK_MANAGERS[0];
-        setCurrentUser(adminUser);
-        localStorage.setItem('holidaypot_admin_session', JSON.stringify(adminUser));
-        logAction('Logged In', 'Manager', adminUser.id, 'Session Started');
-        return true;
+     // 1. Check Main Admin (username: 'admin')
+     if (username === 'admin') {
+        const storedPwd = localStorage.getItem('holidayPot_admin_pwd');
+        const validPass = storedPwd ? storedPwd : DEFAULT_PASS;
+
+        if (pass === validPass) {
+            const adminUser = managers.find(m => m.username === 'admin') || MOCK_MANAGERS[0];
+            setCurrentUser(adminUser);
+            localStorage.setItem('holidaypot_admin_session', JSON.stringify(adminUser));
+            logAction('Logged In', 'Manager', adminUser.id, 'Session Started');
+            return true;
+        }
      }
 
-     // Check other managers
-     const foundManager = managers.find(m => m.username === username);
+     // 2. Check other managers by username
+     const foundManager = managers.find(m => m.username.toLowerCase() === username.toLowerCase());
      if (foundManager) {
-        // Allow if password matches OR if it matches default
-        if (foundManager.password === pass || pass === DEFAULT_PASS) {
+        const managerPass = foundManager.password || DEFAULT_PASS;
+        if (pass === managerPass) {
             setCurrentUser(foundManager);
             localStorage.setItem('holidaypot_admin_session', JSON.stringify(foundManager));
             logAction('Logged In', 'Manager', foundManager.id, 'Session Started');
@@ -408,16 +410,12 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
      
      if (log.isReverted) return;
 
-     // Specific Logic for Enquiries/Bookings Status
      if (log.targetType === 'Booking' && log.action.includes('Status') && log.previousData) {
          setBookings(prev => prev.map(b => b.id === log.targetId ? { ...b, status: log.previousData } : b));
-         // Mark as reverted
          const newLogs = [...activityLogs];
          newLogs[logIndex] = { ...log, isReverted: true };
          setActivityLogs(newLogs);
          localStorage.setItem('holidaypot_logs', JSON.stringify(newLogs));
-         
-         // Add a new log for the revert itself
          logAction('Reverted Action', 'Booking', log.targetId, `Reverted status change based on log ${logId}`);
          alert(`Successfully reverted booking ${log.targetId} to ${log.previousData}`);
      } else {
@@ -519,11 +517,9 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const addBooking = async (booking: Booking) => {
     setBookings(prev => [booking, ...prev]);
     await supabase.from('bookings').insert(booking);
-    // No log action needed for public booking, or log as system
   };
 
   const updateBookingStatus = async (id: string, status: Booking['status']) => {
-    // Capture previous for revert
     const prevBooking = bookings.find(b => b.id === id);
     const prevStatus = prevBooking?.status;
 
@@ -591,7 +587,6 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if(data.blogPosts) setBlogPosts(data.blogPosts);
     if(data.sitePages) setSitePages(data.sitePages);
     
-    // Set restore time as new backup time
     const now = new Date().toISOString();
     setLastBackupDate(now);
     localStorage.setItem('holidaypot_last_backup', now);
@@ -604,10 +599,10 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // SaaS Methods
   const initializeTenantSession = async (tenant: Tenant, manager: Manager) => {
     setCurrentTenant(tenant);
-    setCurrentUser(manager);
+    if (manager) setCurrentUser(manager);
     
     localStorage.setItem('holidaypot_tenant_session', JSON.stringify(tenant));
-    localStorage.setItem('holidaypot_admin_session', JSON.stringify(manager));
+    if (manager) localStorage.setItem('holidaypot_admin_session', JSON.stringify(manager));
 
     // Calculate Flags
     const flags: string[] = [];

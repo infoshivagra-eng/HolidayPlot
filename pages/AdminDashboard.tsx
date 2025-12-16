@@ -1,17 +1,15 @@
 
 import React, { useState } from 'react';
-import { ShieldCheck, Database, Key, ArrowRight, ExternalLink } from 'lucide-react';
+import { ShieldCheck, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useGlobal } from '../GlobalContext';
-import { masterSupabase } from '../lib/saasHelper';
-import { Tenant } from '../types';
 import TenantDashboard from './TenantDashboard';
 
 const AdminDashboard: React.FC = () => {
-  const { currentUser, currentTenant, logout, initializeTenantSession, loading: globalLoading } = useGlobal();
+  const { currentUser, currentTenant, login, initializeTenantSession } = useGlobal();
   
   // Login State
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,69 +21,23 @@ const AdminDashboard: React.FC = () => {
     setError('');
 
     try {
-        let tenantData: Tenant | null = null;
-
-        // 1. Check Tenants in Master DB (Live) - Optional centralized auth
-        try {
-            const { data: tenant } = await masterSupabase
-                .from('tenants')
-                .select('*')
-                .eq('admin_email', email)
-                .single();
-            
-            if (tenant && (tenant.admin_password === password || password === 'admin123')) {
-                tenantData = tenant;
+        const success = await login(username, password);
+        
+        if (success) {
+            // Ensure a default tenant session exists for the single-agency view
+            // This handles the case where we log in as a team member directly
+            if (!currentTenant) {
+               await initializeTenantSession({
+                   id: 'holidaypot_default',
+                   business_name: 'HolidayPot',
+                   admin_email: 'admin@holidaypot.in',
+                   status: 'active',
+                   plan_id: 'enterprise'
+               }, null as any); // Manager is already set by login()
             }
-        } catch (err) {
-            console.log("Master DB Check skipped or failed");
+        } else {
+            throw new Error('Invalid username or password.');
         }
-
-        // 2. Fallback: Check LocalStorage Mock Tenants
-        if (!tenantData) {
-            const localTenantsRaw = localStorage.getItem('holidaypot_mock_tenants');
-            if (localTenantsRaw) {
-                const localTenants: Tenant[] = JSON.parse(localTenantsRaw);
-                const matched = localTenants.find(t => 
-                    t.admin_email.toLowerCase() === email.toLowerCase() && 
-                    (t.admin_password === password || password === 'admin123')
-                );
-                if (matched) {
-                    tenantData = matched;
-                }
-            }
-        }
-
-        // 3. Final Fallback: Default Demo User
-        if (!tenantData) {
-            if (email === 'admin@holidaypot.in' && password === 'admin123') {
-                tenantData = {
-                    id: 'demo-tenant-id',
-                    business_name: 'HolidayPot Official',
-                    admin_email: 'admin@holidaypot.in',
-                    status: 'active',
-                    plan_id: 'enterprise',
-                    // Default to empty strings to avoid setup prompt
-                    db_url: '', 
-                    db_key: ''
-                };
-            }
-        }
-
-        if (!tenantData) throw new Error('Invalid credentials.');
-        if (tenantData.status !== 'active') throw new Error('Account suspended. Contact support.');
-
-        // 4. Initialize Session
-        const managerProfile = {
-            id: 'admin',
-            name: tenantData.business_name,
-            username: 'admin',
-            email: tenantData.admin_email,
-            role: 'Manager' as const, // Defaulting to Manager for agency admin
-            permissions: [],
-            avatar: `https://ui-avatars.com/api/?name=${tenantData.business_name}`
-        };
-
-        await initializeTenantSession(tenantData, managerProfile);
 
     } catch (err: any) {
         setError(err.message);
@@ -114,8 +66,8 @@ const AdminDashboard: React.FC = () => {
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"/>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Username</label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none"/>
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Password</label>
@@ -127,8 +79,8 @@ const AdminDashboard: React.FC = () => {
           </button>
           <div className="text-center pt-4 border-t border-gray-100 flex justify-between items-center">
               <div className="text-left">
-                  <p className="text-xs text-gray-400">Demo Access:</p>
-                  <p className="text-xs text-gray-600 font-mono">admin@holidaypot.in / admin123</p>
+                  <p className="text-xs text-gray-400">Default Access:</p>
+                  <p className="text-xs text-gray-600 font-mono">admin / admin123</p>
               </div>
               <Link to="/schema" target="_blank" className="text-xs font-bold text-brand-blue hover:underline flex items-center gap-1">
                   <Database size={12}/> DB Setup

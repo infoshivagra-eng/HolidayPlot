@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Shield, X, Save, CheckCircle, User, Lock } from 'lucide-react';
+import { Plus, Edit, Trash2, Shield, X, Save, CheckCircle, User, Lock, CheckSquare, Square } from 'lucide-react';
 import { useGlobal } from '../../GlobalContext';
 import { Manager, Permission } from '../../types';
 
@@ -24,6 +24,7 @@ const AdminManagers: React.FC = () => {
     { id: 'manage_packages', label: 'Manage Packages' },
     { id: 'manage_bookings', label: 'Manage Enquiries' },
     { id: 'manage_drivers', label: 'Manage Drivers' },
+    { id: 'manage_blog', label: 'Manage Blog' },
     { id: 'manage_settings', label: 'System Settings' },
     { id: 'view_analytics', label: 'View Analytics' },
   ];
@@ -75,6 +76,15 @@ const AdminManagers: React.FC = () => {
      } else {
          setFormData({...formData, permissions: [...current, perm]});
      }
+  };
+
+  const toggleAllPermissions = () => {
+      const allIds = availablePermissions.map(p => p.id);
+      if (formData.permissions?.length === allIds.length) {
+          setFormData({...formData, permissions: []});
+      } else {
+          setFormData({...formData, permissions: allIds});
+      }
   };
 
   return (
@@ -166,7 +176,12 @@ const AdminManagers: React.FC = () => {
                  </div>
 
                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Permissions</label>
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="block text-xs font-bold text-gray-500 uppercase">Permissions</label>
+                        <button type="button" onClick={toggleAllPermissions} className="text-xs text-brand-blue font-bold hover:underline flex items-center gap-1">
+                            {formData.permissions?.length === availablePermissions.length ? <CheckSquare size={14}/> : <Square size={14}/>} Select All
+                        </button>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                        {availablePermissions.map(perm => (
                           <div 

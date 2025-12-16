@@ -215,7 +215,7 @@ export interface SitePage {
 
 // --- NEW AUTH & LOGGING TYPES ---
 
-export type Permission = 'manage_packages' | 'manage_bookings' | 'manage_drivers' | 'manage_team' | 'manage_settings' | 'view_analytics';
+export type Permission = 'manage_packages' | 'manage_bookings' | 'manage_drivers' | 'manage_team' | 'manage_settings' | 'view_analytics' | 'manage_blog';
 
 export interface Manager {
   id: string;
