@@ -136,6 +136,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { loading, pageSettings } = useGlobal();
 
+  // Check if current route is admin to hide footer
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Packages', path: '/packages' },
@@ -161,7 +164,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   // Maintenance Mode Check
-  if (pageSettings.maintenanceMode && !location.pathname.includes('/admin')) {
+  if (pageSettings.maintenanceMode && !isAdminRoute) {
      return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4 text-center">
            <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center mb-6">
@@ -265,7 +268,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {children}
       </main>
 
-      <Footer />
+      {/* Footer - Hidded on Admin Route */}
+      {!isAdminRoute && <Footer />}
     </div>
   );
 };

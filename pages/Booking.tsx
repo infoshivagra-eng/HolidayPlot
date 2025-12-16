@@ -82,6 +82,8 @@ const Booking: React.FC = () => {
     setStep(3);
   };
 
+  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-500";
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4">
@@ -120,7 +122,7 @@ const Booking: React.FC = () => {
                         <input 
                           required
                           type="text" 
-                          className="w-full pl-10 pr-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-400"
+                          className={inputClass}
                           value={formData.name}
                           onChange={e => setFormData({...formData, name: e.target.value})}
                         />
@@ -131,7 +133,7 @@ const Booking: React.FC = () => {
                       <input 
                         required
                         type="tel" 
-                        className="w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-400"
+                        className="w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-500"
                         value={formData.phone}
                         onChange={e => setFormData({...formData, phone: e.target.value})}
                       />
@@ -142,7 +144,7 @@ const Booking: React.FC = () => {
                       <input 
                         required
                         type="email" 
-                        className="w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-400"
+                        className="w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-500"
                         value={formData.email}
                         onChange={e => setFormData({...formData, email: e.target.value})}
                       />
@@ -153,7 +155,7 @@ const Booking: React.FC = () => {
                         <input 
                             type="number" 
                             min="1"
-                            className="w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-400"
+                            className="w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-500"
                             value={formData.guests}
                             onChange={e => setFormData({...formData, guests: parseInt(e.target.value)})}
                         />
@@ -165,7 +167,7 @@ const Booking: React.FC = () => {
                             <input 
                                 required
                                 type="date"
-                                className="w-full pl-10 pr-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none placeholder-gray-400"
+                                className={inputClass}
                                 value={formData.travelDate}
                                 onChange={e => setFormData({...formData, travelDate: e.target.value})}
                             />
@@ -206,10 +208,10 @@ const Booking: React.FC = () => {
                     <span className="font-bold flex items-center gap-2 text-gray-900"><CreditCard size={20}/> Secure Payment</span>
                   </div>
                   <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-3">
-                     <input type="text" placeholder="Card Number" className="w-full p-2 border border-gray-300 rounded text-gray-900" disabled />
+                     <input type="text" placeholder="Card Number" className="w-full p-2 bg-white text-gray-900 border border-gray-300 rounded" disabled />
                      <div className="grid grid-cols-2 gap-3">
-                        <input type="text" placeholder="MM/YY" className="w-full p-2 border border-gray-300 rounded text-gray-900" disabled />
-                        <input type="text" placeholder="CVC" className="w-full p-2 border border-gray-300 rounded text-gray-900" disabled />
+                        <input type="text" placeholder="MM/YY" className="w-full p-2 bg-white text-gray-900 border border-gray-300 rounded" disabled />
+                        <input type="text" placeholder="CVC" className="w-full p-2 bg-white text-gray-900 border border-gray-300 rounded" disabled />
                      </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">Secure payment via Stripe.</p>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Car, CheckCircle, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -61,6 +62,8 @@ const Taxi: React.FC = () => {
      navigate('/driver-dashboard');
   };
 
+  const inputClass = "w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue placeholder-gray-500";
+
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Header */}
@@ -92,21 +95,23 @@ const Taxi: React.FC = () => {
         {activeTab === 'book' && (
           <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
             <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-               <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                  <label className="block text-xs text-gray-500 mb-1">Pickup</label>
-                  <input type="text" placeholder="e.g. Mumbai Airport" className="w-full bg-transparent outline-none text-sm text-gray-900 placeholder-gray-400"/>
+               <div>
+                  <label className="block text-xs text-gray-500 mb-1 ml-1">Pickup</label>
+                  <input type="text" placeholder="e.g. Mumbai Airport" className={inputClass}/>
                </div>
-               <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                  <label className="block text-xs text-gray-500 mb-1">Dropoff</label>
-                  <input type="text" placeholder="e.g. Pune City" className="w-full bg-transparent outline-none text-sm text-gray-900 placeholder-gray-400"/>
+               <div>
+                  <label className="block text-xs text-gray-500 mb-1 ml-1">Dropoff</label>
+                  <input type="text" placeholder="e.g. Pune City" className={inputClass}/>
                </div>
-               <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                  <label className="block text-xs text-gray-500 mb-1">Date & Time</label>
-                  <input type="datetime-local" className="w-full bg-transparent outline-none text-sm text-gray-900"/>
+               <div>
+                  <label className="block text-xs text-gray-500 mb-1 ml-1">Date & Time</label>
+                  <input type="datetime-local" className={inputClass}/>
                </div>
-               <button type="submit" className="bg-brand-orange text-white font-bold rounded-xl hover:bg-orange-600 transition-colors h-full min-h-[50px]">
-                 Search Taxis
-               </button>
+               <div className="flex flex-col justify-end">
+                 <button type="submit" className="bg-brand-orange text-white font-bold rounded-xl hover:bg-orange-600 transition-colors w-full p-3 h-[50px]">
+                   Search Taxis
+                 </button>
+               </div>
             </form>
 
             {searchResult && (
@@ -153,23 +158,23 @@ const Taxi: React.FC = () => {
                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Register as a Driver</h2>
                    <form className="space-y-4" onSubmit={handleRegisterDriver}>
                       <div className="grid grid-cols-2 gap-4">
-                        <input required type="text" placeholder="First Name" value={driverForm.firstName} onChange={e => setDriverForm({...driverForm, firstName: e.target.value})} className="w-full p-3 bg-gray-50 text-gray-900 border border-gray-200 rounded-lg outline-none focus:border-brand-blue placeholder-gray-400"/>
-                        <input required type="text" placeholder="Last Name" value={driverForm.lastName} onChange={e => setDriverForm({...driverForm, lastName: e.target.value})} className="w-full p-3 bg-gray-50 text-gray-900 border border-gray-200 rounded-lg outline-none focus:border-brand-blue placeholder-gray-400"/>
+                        <input required type="text" placeholder="First Name" value={driverForm.firstName} onChange={e => setDriverForm({...driverForm, firstName: e.target.value})} className={inputClass}/>
+                        <input required type="text" placeholder="Last Name" value={driverForm.lastName} onChange={e => setDriverForm({...driverForm, lastName: e.target.value})} className={inputClass}/>
                       </div>
-                      <input required type="tel" placeholder="Phone Number" value={driverForm.phone} onChange={e => setDriverForm({...driverForm, phone: e.target.value})} className="w-full p-3 bg-gray-50 text-gray-900 border border-gray-200 rounded-lg outline-none focus:border-brand-blue placeholder-gray-400"/>
-                      <input required type="email" placeholder="Email Address" value={driverForm.email} onChange={e => setDriverForm({...driverForm, email: e.target.value})} className="w-full p-3 bg-gray-50 text-gray-900 border border-gray-200 rounded-lg outline-none focus:border-brand-blue placeholder-gray-400"/>
+                      <input required type="tel" placeholder="Phone Number" value={driverForm.phone} onChange={e => setDriverForm({...driverForm, phone: e.target.value})} className={inputClass}/>
+                      <input required type="email" placeholder="Email Address" value={driverForm.email} onChange={e => setDriverForm({...driverForm, email: e.target.value})} className={inputClass}/>
                       
                       <div className="pt-4 border-t border-gray-100">
                          <h3 className="font-semibold text-gray-700 mb-3">Vehicle Details</h3>
                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <select value={driverForm.vehicleType} onChange={e => setDriverForm({...driverForm, vehicleType: e.target.value})} className="w-full p-3 bg-gray-50 text-gray-900 border border-gray-200 rounded-lg outline-none">
+                            <select value={driverForm.vehicleType} onChange={e => setDriverForm({...driverForm, vehicleType: e.target.value})} className={inputClass}>
                               <option>Sedan</option>
                               <option>SUV</option>
                               <option>Tempo Traveller</option>
                             </select>
-                            <input required type="text" placeholder="Model (e.g. Innova)" value={driverForm.model} onChange={e => setDriverForm({...driverForm, model: e.target.value})} className="w-full p-3 bg-gray-50 text-gray-900 border border-gray-200 rounded-lg outline-none placeholder-gray-400"/>
+                            <input required type="text" placeholder="Model (e.g. Innova)" value={driverForm.model} onChange={e => setDriverForm({...driverForm, model: e.target.value})} className={inputClass}/>
                          </div>
-                         <input required type="text" placeholder="License Plate Number" value={driverForm.plate} onChange={e => setDriverForm({...driverForm, plate: e.target.value})} className="w-full p-3 bg-gray-50 text-gray-900 border border-gray-200 rounded-lg outline-none mb-4 placeholder-gray-400"/>
+                         <input required type="text" placeholder="License Plate Number" value={driverForm.plate} onChange={e => setDriverForm({...driverForm, plate: e.target.value})} className={inputClass}/>
                       </div>
 
                       <div className="pt-4 border-t border-gray-100">

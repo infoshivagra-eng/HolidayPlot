@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { Package, Driver, Booking, CompanyProfile, SeoSettings, AiSettings, PageSettings } from './types';
+import { Package, Driver, Booking, CompanyProfile, SeoSettings, AiSettings, PageSettings, EmailSettings } from './types';
 import { POPULAR_PACKAGES, MOCK_DRIVERS, MOCK_RIDES } from './constants';
 import { supabase } from './lib/supabaseClient';
 
@@ -11,7 +11,9 @@ interface GlobalContextType {
   companyProfile: CompanyProfile;
   seoSettings: SeoSettings;
   aiSettings: AiSettings;
+  emailSettings: EmailSettings;
   pageSettings: PageSettings;
+  lastBackupDate: string | null;
   addPackage: (pkg: Package) => void;
   updatePackage: (pkg: Package) => void;
   deletePackage: (id: string) => void;
@@ -23,7 +25,9 @@ interface GlobalContextType {
   updateCompanyProfile: (profile: CompanyProfile) => void;
   updateSeoSettings: (seo: SeoSettings) => void;
   updateAiSettings: (settings: AiSettings) => void;
+  updateEmailSettings: (settings: EmailSettings) => void;
   updatePageSettings: (settings: PageSettings) => void;
+  importData: (data: any) => void;
   loading: boolean;
 }
 
@@ -34,6 +38,7 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [packages, setPackages] = useState<Package[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
 
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
     name: 'HolidayPot',
@@ -41,12 +46,12 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     phone: '+91 98765 43210',
     email: 'hello@holidaypot.in',
     website: 'https://holidaypot.com',
-    logo: '',
+    logo: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=200&h=200&fit=crop',
     heroImage: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80',
     gstNumber: '29ABCDE1234F1Z5',
-    facebook: '#',
-    twitter: '#',
-    instagram: '#'
+    facebook: 'https://facebook.com',
+    twitter: 'https://twitter.com',
+    instagram: 'https://instagram.com'
   });
 
   const [seoSettings, setSeoSettings] = useState<SeoSettings>({
@@ -56,24 +61,44 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     ogImage: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80',
     sitemapEnabled: true,
     robotsTxtEnabled: true,
+    robotsTxtContent: 'User-agent: *\nAllow: /',
     schemaMarkupEnabled: true,
     analyticsId: 'UA-XXXXX-Y'
   });
 
   const [aiSettings, setAiSettings] = useState<AiSettings>({
-    primaryApiKey: '', // Will default to env var in util if empty
+    provider: 'gemini',
+    primaryApiKey: '', 
     fallbackApiKeys: [],
     model: 'gemini-2.5-flash',
     maxRetries: 3
   });
 
-  const [pageSettings, setPageSettings] = useState<PageSettings>({
-    error404: {
-      title: 'Page Not Found',
-      message: 'The adventure you are looking for seems to have gone off-map.',
-      image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
-    },
-    maintenanceMode: false
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>({
+    enableNotifications: true,
+    recipients: [
+        { address: 'admin@holidaypot.in', notifyOn: ['Package', 'Taxi', 'AI Plan'] },
+        { address: '', notifyOn: ['Package'] },
+        { address: '', notifyOn: ['Taxi'] },
+        { address: '', notifyOn: ['AI Plan'] }
+    ]
+  });
+
+  const [pageSettings, setPageSettings] = useState<PageSettings>(() => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+          const stored = localStorage.getItem('holidaypot_page_settings');
+          if (stored) return JSON.parse(stored);
+      }
+    } catch (e) { console.error("Failed to load page settings", e); }
+    return {
+        error404: {
+        title: 'Page Not Found',
+        message: 'The adventure you are looking for seems to have gone off-map.',
+        image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+        },
+        maintenanceMode: false
+    };
   });
 
   // Initial Data Fetch
@@ -81,7 +106,7 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch Packages - ORDERED BY CREATED_AT DESC (Newest First)
+        // Fetch Packages
         const { data: pkgData, error: pkgError } = await supabase
           .from('packages')
           .select('*')
@@ -90,7 +115,6 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (!pkgError && pkgData && pkgData.length > 0) {
           setPackages(pkgData);
         } else {
-           // Fallback if DB is empty or connection fails
            setPackages(POPULAR_PACKAGES);
         }
 
@@ -111,7 +135,7 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (!bookingError && bookingData && bookingData.length > 0) {
           setBookings(bookingData);
         } else {
-          // Use default mock bookings if DB is empty
+          // Default bookings...
           const defaultBookings: Booking[] = [
              {
                id: 'BK-1001',
@@ -158,16 +182,19 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         // Fetch SEO
         const { data: seoData, error: seoError } = await supabase.from('seo_settings').select('*').single();
         if (!seoError && seoData) {
-          setSeoSettings(seoData);
+          setSeoSettings(prev => ({...prev, ...seoData}));
         }
 
-        // Load AI Settings from LocalStorage (Simulated DB for this part)
+        // Load Settings from LocalStorage (Sync)
         const storedAi = localStorage.getItem('holidaypot_ai_settings');
         if (storedAi) setAiSettings(JSON.parse(storedAi));
 
-        // Load Page Settings from LocalStorage
-        const storedPages = localStorage.getItem('holidaypot_page_settings');
-        if (storedPages) setPageSettings(JSON.parse(storedPages));
+        const storedEmail = localStorage.getItem('holidaypot_email_settings');
+        if (storedEmail) setEmailSettings(JSON.parse(storedEmail));
+
+        
+        const storedBackup = localStorage.getItem('holidaypot_last_backup');
+        if (storedBackup) setLastBackupDate(storedBackup);
 
       } catch (err) {
         console.error("Supabase connection error, falling back to mocks", err);
@@ -183,7 +210,6 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // --- Actions ---
 
   const addPackage = async (pkg: Package) => {
-    // Optimistic Update: Add to beginning of array
     setPackages(prev => [pkg, ...prev]);
     await supabase.from('packages').insert(pkg);
   };
@@ -194,26 +220,15 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const deletePackage = async (id: string) => {
-    // Check for dependencies (Bookings)
     const hasBookings = bookings.some(b => b.itemId === id);
     if (hasBookings) {
-        alert("Cannot delete this package because there are bookings associated with it. Please delete the bookings first.");
+        alert("Cannot delete this package because there are bookings associated with it.");
         return;
     }
-
-    // Optimistic Update
     setPackages(prev => prev.filter(p => p.id !== id));
-    
     try {
-        const { error } = await supabase.from('packages').delete().eq('id', id);
-        if (error) {
-            console.error("Error deleting package from DB:", error);
-            alert("Failed to delete package from database. " + error.message);
-            // Rollback optimistic update if needed, or refresh page
-        }
-    } catch (e) {
-        console.error("Exception in deletePackage:", e);
-    }
+        await supabase.from('packages').delete().eq('id', id);
+    } catch (e) { console.error(e); }
   };
 
   const addDriver = async (driver: Driver) => {
@@ -243,8 +258,6 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const updateCompanyProfile = async (profile: CompanyProfile) => {
     setCompanyProfile(profile);
-    
-    // Check if row exists, if not insert, else update
     const { data } = await supabase.from('company_profile').select('id').single();
     if (data) {
        await supabase.from('company_profile').update(profile).eq('id', data.id);
@@ -268,9 +281,31 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     localStorage.setItem('holidaypot_ai_settings', JSON.stringify(settings));
   };
 
+  const updateEmailSettings = (settings: EmailSettings) => {
+    setEmailSettings(settings);
+    localStorage.setItem('holidaypot_email_settings', JSON.stringify(settings));
+  };
+
   const updatePageSettings = (settings: PageSettings) => {
     setPageSettings(settings);
     localStorage.setItem('holidaypot_page_settings', JSON.stringify(settings));
+  };
+
+  const importData = (data: any) => {
+    if(data.packages) setPackages(data.packages);
+    if(data.drivers) setDrivers(data.drivers);
+    if(data.bookings) setBookings(data.bookings);
+    if(data.companyProfile) setCompanyProfile(data.companyProfile);
+    if(data.aiSettings) updateAiSettings(data.aiSettings);
+    if(data.emailSettings) updateEmailSettings(data.emailSettings);
+    if(data.seoSettings) setSeoSettings(data.seoSettings);
+    
+    // Set restore time as new backup time
+    const now = new Date().toISOString();
+    setLastBackupDate(now);
+    localStorage.setItem('holidaypot_last_backup', now);
+
+    alert("Data imported to local state. Note: This does not automatically sync deeply to the database in this demo to prevent corruption.");
   };
 
   return (
@@ -281,7 +316,9 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       companyProfile,
       seoSettings,
       aiSettings,
+      emailSettings,
       pageSettings,
+      lastBackupDate,
       addPackage,
       updatePackage,
       deletePackage,
@@ -293,7 +330,9 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       updateCompanyProfile,
       updateSeoSettings,
       updateAiSettings,
+      updateEmailSettings,
       updatePageSettings,
+      importData,
       loading
     }}>
       {children}

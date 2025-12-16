@@ -160,15 +160,28 @@ export interface SeoSettings {
   // Tech SEO
   sitemapEnabled: boolean;
   robotsTxtEnabled: boolean;
+  robotsTxtContent: string; // NEW
   schemaMarkupEnabled: boolean;
   analyticsId: string;
 }
 
 export interface AiSettings {
+  provider: 'gemini' | 'openai' | 'custom';
   primaryApiKey: string;
   fallbackApiKeys: string[]; // List of fallback keys
-  model: string; // e.g. gemini-2.5-flash
+  model: string; // e.g. gemini-2.5-flash, gpt-4
+  customBaseUrl?: string; // For custom/local LLMs
   maxRetries: number;
+}
+
+export interface EmailRecipient {
+  address: string;
+  notifyOn: ('Package' | 'Taxi' | 'AI Plan')[];
+}
+
+export interface EmailSettings {
+  enableNotifications: boolean;
+  recipients: EmailRecipient[]; // Changed to array for better management
 }
 
 export interface PageSettings {

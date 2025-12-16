@@ -139,6 +139,8 @@ Explore with **${companyProfile.name}**
     setShowModal(false);
   };
 
+  const inputClass = "w-full pl-10 pr-4 py-3 bg-white text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all placeholder-gray-500";
+
   return (
     <div className={`${embedded ? 'bg-transparent' : 'bg-white rounded-3xl shadow-xl border border-gray-100 p-8'}`}>
       {!embedded && (
@@ -159,7 +161,7 @@ Explore with **${companyProfile.name}**
                   type="text" 
                   value={formData.destination}
                   onChange={(e) => setFormData({...formData, destination: e.target.value})}
-                  className="w-full pl-10 pr-4 py-3 bg-white text-gray-900 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all placeholder-gray-400"
+                  className={inputClass}
                   placeholder="e.g. Kerala, Jaipur..."
                   required={!embedded}
                 />
@@ -177,7 +179,7 @@ Explore with **${companyProfile.name}**
                     max="30"
                     value={formData.days}
                     onChange={(e) => setFormData({...formData, days: parseInt(e.target.value)})}
-                    className="w-full pl-10 pr-4 py-3 bg-white text-gray-900 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -188,7 +190,7 @@ Explore with **${companyProfile.name}**
                   <select 
                     value={formData.budget}
                     onChange={(e) => setFormData({...formData, budget: e.target.value})}
-                    className="w-full pl-10 pr-4 py-3 bg-white text-gray-900 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all appearance-none"
+                    className={inputClass}
                   >
                     <option>Budget</option>
                     <option>Moderate</option>
@@ -205,7 +207,7 @@ Explore with **${companyProfile.name}**
                 <select 
                   value={formData.travelers}
                   onChange={(e) => setFormData({...formData, travelers: e.target.value})}
-                  className="w-full pl-10 pr-4 py-3 bg-white text-gray-900 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all appearance-none"
+                  className={inputClass}
                 >
                   <option>Solo</option>
                   <option>Couple</option>
@@ -221,7 +223,7 @@ Explore with **${companyProfile.name}**
                 <textarea 
                   value={formData.interests}
                   onChange={(e) => setFormData({...formData, interests: e.target.value})}
-                  className="w-full p-3 bg-white text-gray-900 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all h-20 resize-none placeholder-gray-400"
+                  className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-brand-blue outline-none transition-all h-20 resize-none placeholder-gray-500"
                   placeholder="e.g. Vegan food, History, Hiking..."
                 ></textarea>
               </div>
@@ -288,7 +290,7 @@ Explore with **${companyProfile.name}**
                             <input 
                                 required
                                 type="text" 
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue"
+                                className={inputClass}
                                 placeholder="John Doe"
                                 value={userForm.name}
                                 onChange={e => setUserForm({...userForm, name: e.target.value})}
@@ -302,7 +304,7 @@ Explore with **${companyProfile.name}**
                             <input 
                                 required
                                 type="tel" 
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue"
+                                className={inputClass}
                                 placeholder="919876543210"
                                 value={userForm.phone}
                                 onChange={e => setUserForm({...userForm, phone: e.target.value})}
@@ -317,7 +319,7 @@ Explore with **${companyProfile.name}**
                             <input 
                                 required
                                 type="email" 
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue"
+                                className={inputClass}
                                 placeholder="john@example.com"
                                 value={userForm.email}
                                 onChange={e => setUserForm({...userForm, email: e.target.value})}
@@ -331,7 +333,7 @@ Explore with **${companyProfile.name}**
                             <input 
                                 required
                                 type="date" 
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue text-gray-700"
+                                className={inputClass}
                                 value={userForm.planningDate}
                                 onChange={e => setUserForm({...userForm, planningDate: e.target.value})}
                             />
@@ -342,7 +344,7 @@ Explore with **${companyProfile.name}**
                         <div className="relative">
                             <MessageSquare className="absolute left-3 top-3 text-gray-400" size={18}/>
                             <textarea
-                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue resize-none h-24"
+                                className="w-full pl-10 pr-4 py-3 bg-white text-gray-900 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-brand-blue resize-none h-24 placeholder-gray-500"
                                 placeholder="E.g., I want to add a visit to Taj Mahal..."
                                 value={userForm.message}
                                 onChange={e => setUserForm({...userForm, message: e.target.value})}
