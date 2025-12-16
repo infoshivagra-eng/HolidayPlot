@@ -159,6 +159,52 @@ const AdminPackages: React.FC = () => {
     }
   };
 
+  const handleGranularAI = async (section: 'itinerary' | 'gems' | 'food' | 'smart') => {
+    if (!pkgForm.destination) {
+        alert("Please enter a Destination in Basic Info first.");
+        return;
+    }
+    setIsGenerating(true);
+
+    try {
+        let prompt = "";
+        const baseContext = `Destination: ${pkgForm.destination}. Duration: ${pkgForm.duration || '5 Days'}.`;
+        
+        if (section === 'itinerary') {
+            prompt = `${baseContext} Create a daily itinerary. Return JSON: { "itinerary": [{ "day": 1, "title": "...", "activities": ["..."], "meals": ["..."] }] }`;
+        } else if (section === 'gems') {
+            prompt = `${baseContext} List 3 hidden gems. Return JSON: { "hiddenGems": [{ "title": "...", "description": "...", "image": "..." }] }`;
+        } else if (section === 'food') {
+            prompt = `${baseContext} List 4 must-try foods. Return JSON: { "foodGuide": [{ "name": "...", "type": "Veg/Non-Veg", "cost": 5, "mustTry": true }] }`;
+        } else if (section === 'smart') {
+            prompt = `${baseContext} Provide smart travel info. Return JSON: { 
+                "packingList": [{ "category": "...", "items": ["..."] }],
+                "safetyTips": [{ "title": "...", "description": "..." }],
+                "visaInfo": { "requirements": "...", "processingTime": "...", "documents": ["..."] },
+                "airportInfo": { "bestLounge": "...", "price": 0, "tips": "..." }
+            }`;
+        }
+
+        const jsonStr = await generateAIContent(prompt);
+        const data = JSON.parse(jsonStr);
+
+        setPkgForm(prev => ({
+            ...prev,
+            itinerary: section === 'itinerary' && data.itinerary ? data.itinerary : prev.itinerary,
+            hiddenGems: section === 'gems' && data.hiddenGems ? data.hiddenGems : prev.hiddenGems,
+            foodGuide: section === 'food' && data.foodGuide ? data.foodGuide : prev.foodGuide,
+            packingList: section === 'smart' && data.packingList ? data.packingList : prev.packingList,
+            safetyTips: section === 'smart' && data.safetyTips ? data.safetyTips : prev.safetyTips,
+            visaInfo: section === 'smart' && data.visaInfo ? data.visaInfo : prev.visaInfo,
+            airportInfo: section === 'smart' && data.airportInfo ? data.airportInfo : prev.airportInfo,
+        }));
+    } catch (e: any) {
+        alert("AI Error: " + e.message);
+    } finally {
+        setIsGenerating(false);
+    }
+  };
+
   const handleSavePackage = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -188,7 +234,7 @@ const AdminPackages: React.FC = () => {
           foodGuide: pkgForm.foodGuide,
           packingList: pkgForm.packingList,
           safetyTips: pkgForm.safetyTips,
-          visaInfo: pkgForm.visaInfo,
+          visaInfo: { ...pkgForm.visaInfo, documents: pkgForm.visaInfo.documents.map(d => d.trim()).filter(d => d) },
           airportInfo: pkgForm.airportInfo,
           
           created_at: new Date().toISOString()
@@ -367,7 +413,7 @@ const AdminPackages: React.FC = () => {
                    className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-purple-200 transition-colors"
                  >
                     {isGenerating ? <Loader2 className="animate-spin" size={16}/> : <Sparkles size={16}/>} 
-                    {editingId ? 'Regenerate with AI' : 'Auto-Fill with AI'}
+                    {editingId ? 'Regenerate All' : 'Auto-Fill All'}
                  </button>
                  <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-200 rounded-full"><X size={20}/></button>
               </div>
@@ -469,9 +515,14 @@ const AdminPackages: React.FC = () => {
                      <div>
                         <div className="flex justify-between items-center mb-4">
                            <h3 className="font-bold text-lg text-gray-800">Daily Schedule</h3>
-                           <button type="button" onClick={addItineraryDay} className="text-sm bg-blue-50 text-brand-blue px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 flex items-center gap-1">
-                              <Plus size={16}/> Add Day
-                           </button>
+                           <div className="flex gap-2">
+                                <button type="button" onClick={() => handleGranularAI('itinerary')} disabled={isGenerating} className="text-sm bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-100 flex items-center gap-1 transition-colors">
+                                    {isGenerating ? <Loader2 className="animate-spin" size={14}/> : <Sparkles size={14}/>} AI Itinerary
+                                </button>
+                                <button type="button" onClick={addItineraryDay} className="text-sm bg-blue-50 text-brand-blue px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 flex items-center gap-1 transition-colors">
+                                    <Plus size={16}/> Add Day
+                                </button>
+                           </div>
                         </div>
                         <div className="space-y-4">
                            {pkgForm.itinerary.map((day, idx) => (
@@ -516,7 +567,7 @@ const AdminPackages: React.FC = () => {
                                           <input 
                                              type="text" 
                                              value={day.meals.join(', ')} 
-                                             onChange={(e) => updateItineraryDay(idx, 'meals', e.target.value.split(',').map(s => s.trim()))}
+                                             onChange={(e) => updateItineraryDay(idx, 'meals', e.target.value.split(',').map((s: string) => s.trim()))}
                                              className={inputClass + " text-sm"}
                                              placeholder="Breakfast, Lunch, Dinner"
                                           />
@@ -537,9 +588,14 @@ const AdminPackages: React.FC = () => {
                         <div>
                            <div className="flex justify-between items-center mb-4">
                               <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2"><Camera size={18}/> Hidden Gems</h3>
-                              <button type="button" onClick={addGem} className="text-sm bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-100 flex items-center gap-1">
-                                 <Plus size={16}/> Add Gem
-                              </button>
+                              <div className="flex gap-2">
+                                    <button type="button" onClick={() => handleGranularAI('gems')} disabled={isGenerating} className="text-sm bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-100 flex items-center gap-1 transition-colors">
+                                        <Sparkles size={14}/> AI Gems
+                                    </button>
+                                    <button type="button" onClick={addGem} className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 flex items-center gap-1 transition-colors">
+                                        <Plus size={16}/> Add Gem
+                                    </button>
+                              </div>
                            </div>
                            <div className="grid md:grid-cols-2 gap-4">
                               {pkgForm.hiddenGems.map((gem, idx) => (
@@ -575,9 +631,14 @@ const AdminPackages: React.FC = () => {
                         <div>
                            <div className="flex justify-between items-center mb-4">
                               <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2"><Utensils size={18}/> Food Guide</h3>
-                              <button type="button" onClick={addFood} className="text-sm bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-100 flex items-center gap-1">
-                                 <Plus size={16}/> Add Food
-                              </button>
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => handleGranularAI('food')} disabled={isGenerating} className="text-sm bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-100 flex items-center gap-1 transition-colors">
+                                    <Sparkles size={14}/> AI Food
+                                </button>
+                                <button type="button" onClick={addFood} className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 flex items-center gap-1 transition-colors">
+                                    <Plus size={16}/> Add Food
+                                </button>
+                              </div>
                            </div>
                            <div className="grid md:grid-cols-2 gap-4">
                               {pkgForm.foodGuide.map((food, idx) => (
@@ -625,7 +686,14 @@ const AdminPackages: React.FC = () => {
 
                   {/* DYNAMIC SMART TRAVEL */}
                   {modalTab === 'smart' && (
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                        {/* Granular AI Button for Smart Travel */}
+                        <div className="absolute -top-12 right-0">
+                            <button type="button" onClick={() => handleGranularAI('smart')} disabled={isGenerating} className="text-sm bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-100 flex items-center gap-1 transition-colors">
+                                {isGenerating ? <Loader2 className="animate-spin" size={14}/> : <Sparkles size={14}/>} Auto-Fill Smart Info
+                            </button>
+                        </div>
+
                         {/* Packing & Safety */}
                         <div className="space-y-6">
                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -672,7 +740,7 @@ const AdminPackages: React.FC = () => {
                               <div className="space-y-3">
                                  <input type="text" placeholder="Requirements" value={pkgForm.visaInfo.requirements} onChange={e => setPkgForm(p => ({...p, visaInfo: {...p.visaInfo, requirements: e.target.value}}))} className={inputClass + " py-2 text-sm"}/>
                                  <input type="text" placeholder="Processing Time" value={pkgForm.visaInfo.processingTime} onChange={e => setPkgForm(p => ({...p, visaInfo: {...p.visaInfo, processingTime: e.target.value}}))} className={inputClass + " py-2 text-sm"}/>
-                                 <input type="text" placeholder="Documents (comma separated)" value={pkgForm.visaInfo.documents.join(', ')} onChange={e => setPkgForm(p => ({...p, visaInfo: {...p.visaInfo, documents: e.target.value.split(',').map(s=>s.trim())}}))} className={inputClass + " py-2 text-sm"}/>
+                                 <input type="text" placeholder="Documents (comma separated)" value={pkgForm.visaInfo.documents.join(', ')} onChange={e => setPkgForm(p => ({...p, visaInfo: {...p.visaInfo, documents: e.target.value.split(',')}}))} className={inputClass + " py-2 text-sm"}/>
                               </div>
                            </div>
 
